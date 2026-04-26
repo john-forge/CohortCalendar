@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Forge Lunch Challenge Canvas</title>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --panel: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #e4e0d5;
+    --line-soft: #f1ede3;
+    --accent: #c24f1d;
+    --accent-soft: #fde8dc;
+    --warn: #d13438;
+    --warn-soft: #fde0e0;
+    --ok: #2d6a2f;
+    --slot-h: 14px;   /* one 5-min slot is 14px tall */
+    --col-w: 140px;
+  }
+  html, body { margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); font-size:13px; }
+  body { overflow:hidden; height:100vh; }
+  .app { display: grid; grid-template-rows: 48px 1fr; height:100vh; }
+
+  header { display:flex; align-items:center; gap:12px; padding:0 16px; border-bottom:1px solid var(--line); background: var(--panel); }
+  header .brand { font-weight:600; font-size:14px; letter-spacing:0.3px; }
+  header .brand .sub { color:var(--muted); font-weight:400; margin-left:8px; }
+  .week-tabs { display:flex; gap:2px; margin-left:16px; }
+  .week-tab { padding: 4px 10px; border:1px solid var(--line); background:transparent; cursor:pointer; font-size:12px; border-radius:4px; }
+  .week-tab.active { background: var(--ink); color:#fff; border-color: var(--ink); }
+  .week-tab .count { font-size:10px; color: var(--warn); margin-left:4px; }
+  .week-tab.active .count { color: #ff9b82; }
+  .week-tab.full-challenge-tab { font-weight:600; padding: 4px 12px; margin-right: 6px; border-color: var(--accent); color: var(--accent); }
+  .week-tab.full-challenge-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .week-tab.full-challenge-tab.active .count { color: #fff; opacity: 0.9; }
+  header .actions { margin-left:auto; display:flex; gap:6px; }
+  header .actions button { border:1px solid var(--line); background: var(--panel); padding:4px 10px; cursor:pointer; font-size:12px; border-radius:4px; }
+  header .actions button:hover { background: var(--bg); }
+  header .warncount { background: var(--warn-soft); color: var(--warn); padding: 2px 8px; border-radius:12px; font-weight:600; font-size:11px; }
+
+  /* Segmented controls (view toggle + guide filter) */
+  .segment { display:flex; gap:0; margin-left:12px; border:1px solid var(--line); border-radius:4px; overflow:hidden; }
+  .segment button { background: var(--panel); border:none; border-right:1px solid var(--line); padding: 4px 10px; cursor:pointer; font-size:12px; font-weight:500; color:var(--ink); }
+  .segment button:last-child { border-right:none; }
+  .segment button:hover { background: var(--bg); }
+  .segment button.active { background: var(--ink); color:#fff; }
+  .guide-seg button { padding: 4px 8px; font-weight:600; font-variant: tabular-nums; }
+  .guide-seg button[data-gf="K"].active { background:#3a7bd5; color:#fff; }
+  .guide-seg button[data-gf="J"].active { background:#7a3ad5; color:#fff; }
+  .guide-seg button[data-gf="A"].active { background:#d5933a; color:#fff; }
+  .guide-seg button[data-gf="X"].active { background:#555; color:#fff; }
+
+  /* Dimmed state when a specific guide filter is active */
+  .block.dimmed { opacity: 0.15; filter: saturate(0.4); }
+  .block.filter-match { box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(0,0,0,0.15); z-index:14; }
+
+  /* Lineage rings — outline-based so they sit inside the block's rounded corner
+     without fighting box-shadow or the existing border-left accent. */
+  .block.ring-selected  { outline: 2px solid var(--accent); outline-offset: -2px; z-index:13; }
+  .block.ring-prereq    { outline: 2px solid color-mix(in srgb, var(--accent) 55%, white); outline-offset: -2px; z-index:12; }
+  .block.ring-dependent { outline: 2px solid var(--muted); outline-offset: -2px; z-index:12; }
+
+  /* Week-tab pin glyph */
+  .week-tab .pin-glyph { font-size:10px; color: var(--muted); margin-right:3px; }
+  .week-tab.active .pin-glyph { color: rgba(255,255,255,0.75); }
+
+  /* Day-header pin line */
+  .cal .hdr.day .pin-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 400;
+    cursor: pointer;
+    padding: 1px 4px 2px;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cal .hdr.day .pin-label:hover { color: var(--ink); }
+
+  /* Lineage / readiness side-rail (lives inside #warn-list when a selection is active) */
+  .lineage-back { padding: 6px 14px 2px; }
+  .lineage-back .back-link { color: var(--muted); text-decoration: none; font-size: 11px; }
+  .lineage-back .back-link:hover { color: var(--ink); text-decoration: underline; }
+  .lineage-group { padding: 6px 14px 10px; border-bottom: 1px solid var(--line); }
+  .lineage-group:last-of-type { border-bottom: none; }
+  .lineage-label { font-size: 10px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .lineage-selected .ls-title { font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  .lineage-selected .ls-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .lineage-empty { font-size: 11px; color: var(--muted); font-style: italic; padding: 2px 0; }
+  .lineage-summary { padding: 8px 14px; background: var(--bg); font-size: 11px; color: var(--ink); font-weight: 500; border-top: 1px solid var(--line); }
+
+  .lineage-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; padding: 4px 2px; font-size: 11.5px; border-radius: 3px; }
+  .lineage-row.clickable { cursor: pointer; }
+  .lineage-row.clickable:hover { background: var(--bg); }
+  .lineage-row .lr-glyph { font-size: 12px; text-align: center; font-weight: 700; }
+  .lineage-row .lr-title { color: var(--ink); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
+  .lineage-row .lr-meta  { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lineage-row.tone-ok   .lr-glyph { color: var(--ok); }
+  .lineage-row.tone-warn .lr-glyph { color: #b07800; }
+  .lineage-row.tone-bad  .lr-glyph { color: var(--warn); }
+  .lineage-row.tone-bad:not(.clickable) .lr-title { color: var(--muted); font-style: italic; }
+
+  /* Day separator bars (drawn on top of blocks so blocks can never cover them) */
+  .day-sep { position:absolute; top:0; bottom:0; width:3px; background: var(--ink); z-index:40; pointer-events:none; }
+  .day-sep.week-sep { width: 5px; background: var(--ink); box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+
+  /* Guide schedule view */
+  .guide-view { padding: 14px 18px; overflow:auto; background: var(--bg); height:100%; box-sizing:border-box; }
+  .guide-view h1 { margin:0 0 12px; font-size:14px; font-weight:600; letter-spacing:0.3px; color:var(--ink); }
+  .guide-view h1 .wk { color: var(--muted); font-weight:400; margin-left:8px; }
+  .guide-grid { display:grid; grid-template-columns: 60px repeat(5, 1fr); gap:8px; }
+  .guide-grid .col-head { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted); padding: 6px 8px; text-align:center; background: var(--panel); border-radius:4px; }
+  .guide-grid .col-head.guide-K { background:#3a7bd5; color:#fff; }
+  .guide-grid .col-head.guide-J { background:#7a3ad5; color:#fff; }
+  .guide-grid .col-head.guide-A { background:#d5933a; color:#fff; }
+  .guide-grid .col-head.guide-X { background:#555; color:#fff; }
+  .guide-grid .col-head.guide-U { background:var(--panel); color:var(--muted); border:1px dashed var(--line); }
+  .guide-grid .row-head { font-size:12px; font-weight:600; color:var(--ink); padding: 10px 6px; text-align:right; align-self:start; }
+  .guide-grid .cell { background: var(--panel); border:1px solid var(--line); border-radius:4px; min-height: 80px; padding:6px; display:flex; flex-direction:column; gap:5px; }
+  .guide-grid .cell.empty { background: transparent; border: 1px dashed var(--line); }
+  .gcard { border-left:4px solid var(--block-accent, #888); background: var(--block-bg, #f3f3f3); border-radius:4px; padding: 5px 7px; font-size:11px; line-height:1.3; cursor:pointer; position:relative; }
+  .gcard:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .gcard .tm { color: rgba(0,0,0,0.55); font-size:10px; font-variant-numeric: tabular-nums; }
+  .gcard .tt { font-weight:600; color: var(--block-ink, #1a1a1a); margin-top:1px; }
+  .gcard .gr { color: rgba(0,0,0,0.5); font-size:9.5px; margin-top:1px; font-weight:500; }
+  .gcard.overlap { outline: 2px solid var(--warn); outline-offset:-1px; }
+  .gcard .overlap-tag { position:absolute; top:2px; right:4px; background:var(--warn); color:#fff; font-size:8.5px; padding:0 4px; border-radius:6px; font-weight:700; letter-spacing:0.4px; }
+
+
+  main { display: grid; grid-template-columns: 1fr 340px; overflow:hidden; }
+
+  .cal-wrap { overflow:auto; position:relative; background: var(--panel); }
+  .cal {
+    display: grid;
+    grid-template-columns: 54px repeat(10, var(--col-w));
+    position:relative;
+    min-width: fit-content;
+  }
+  .cal .hdr { position: sticky; top: 0; background: var(--panel); z-index:10; border-bottom:1px solid var(--line); text-align:center; font-size:11px; }
+  .cal .hdr.day { padding: 6px 4px 0; border-right:1px solid var(--line); font-weight:600; }
+  .cal .hdr.grade { padding-bottom:6px; color: var(--muted); font-weight:500; border-right:1px solid var(--line); background: var(--panel); border-bottom:1px solid var(--line); }
+  .cal .hdr.time-corner { background: var(--panel); border-right:1px solid var(--line); border-bottom:1px solid var(--line); position: sticky; top: 0; left: 0; z-index: 25; }
+
+  /* Week banner row (only populated in full-challenge mode).
+     Stagger the sticky top values so banner → day → grade stack cleanly
+     when the user scrolls vertically. */
+  .cal.full-challenge .hdr.week-banner { position: sticky; top: 0; z-index: 11; }
+  .cal.full-challenge .hdr.day         { top: 26px; z-index: 10; }
+  .cal.full-challenge .hdr.grade       { top: 64px; z-index: 10; }
+  .cal .hdr.week-banner {
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink);
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .cal .hdr.week-banner:hover { background: var(--panel); }
+  .cal .hdr.week-banner .wb-num { font-weight: 600; color: var(--accent); }
+  .cal .hdr.week-banner .wb-date { color: var(--muted); font-size: 11px; }
+
+  .time-col { background: var(--panel); border-right:1px solid var(--line); position: sticky; left: 0; z-index: 15; box-shadow: 2px 0 4px -2px rgba(0,0,0,0.08); }
+  .time-tick { height: var(--slot-h); padding: 0 6px; text-align:right; font-size:10px; color: var(--muted); line-height: var(--slot-h); border-top:1px dotted transparent; }
+  .time-tick.major { border-top:1px solid var(--line); color: var(--ink); font-weight:500; }
+  .time-tick.half { border-top:1px dotted var(--line); }
+
+  .grade-col { position:relative; border-right:1px solid var(--line); }
+  .grade-col .slot { height: var(--slot-h); }
+  .grade-col .slot.major { border-top:1px solid var(--line); }
+  .grade-col .slot.half { border-top:1px dotted var(--line-soft); }
+  .grade-col.highlight { background: rgba(194,79,29,0.06); }
+  .drop-ghost { position:absolute; border:2px dashed var(--accent); background: rgba(194,79,29,0.12); pointer-events:none; z-index:50; border-radius:6px; }
+
+  .block {
+    position:absolute;
+    border-radius:6px;
+    padding: 4px 6px 4px 10px;
+    font-size:11px;
+    line-height:1.25;
+    overflow:hidden;
+    cursor: grab;
+    user-select:none;
+    z-index:5;
+    background: var(--block-bg, #e7f5e7);
+    border-left: 4px solid var(--block-accent, #5b9560);
+    transition: box-shadow 0.08s ease;
+  }
+  .block:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.15); z-index:12; }
+  .block.dragging { opacity:0.35; cursor: grabbing; z-index:60; box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
+  .block.anchor { opacity:0.6; cursor: default; background: repeating-linear-gradient(-45deg, var(--block-bg, #eaeaea), var(--block-bg, #eaeaea) 6px, rgba(255,255,255,0.5) 6px, rgba(255,255,255,0.5) 10px); }
+  .block.pin { font-weight:600; box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .block .ttl {
+    font-weight:600;
+    color: var(--block-ink, #1a1a1a);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .block .meta { color: rgba(0,0,0,0.55); font-size:10px; margin-top:2px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .block .std { color: rgba(0,0,0,0.45); font-size:9.5px; margin-top:1px; font-variant:tabular-nums; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .block .guide-pick {
+    position:absolute; bottom:3px; right:3px;
+    font-size:9px; padding:0 4px; border:none; background:rgba(255,255,255,0.8);
+    border-radius:3px; cursor:pointer; font-weight:600;
+  }
+  .block.violated::before {
+    content: '';
+    position:absolute; top:5px; right:5px;
+    width:7px; height:7px; border-radius:50%;
+    background: var(--warn);
+    box-shadow: 0 0 0 2px var(--panel);
+    z-index:2;
+  }
+  .block.selected { box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(0,0,0,0.15); z-index:15; }
+
+  /* type colors — Google Calendar-style soft pastels with matching accent bar */
+  .block.t-biology    { --block-bg: #e6f4ea; --block-accent: #1e8e3e; }
+  .block.t-chem       { --block-bg: #e8f0fe; --block-accent: #1a73e8; }
+  .block.t-chem-lab   { --block-bg: #d2e3fc; --block-accent: #174ea6; }
+  .block.t-math       { --block-bg: #fef7e0; --block-accent: #f9ab00; }
+  .block.t-diagnostic { --block-bg: #feefc3; --block-accent: #ea8600; }
+  .block.t-ela        { --block-bg: #f3e8fd; --block-accent: #8430ce; }
+  .block.t-challenge  { --block-bg: #fce8e6; --block-accent: #d93025; }
+  .block.t-movement   { --block-bg: #e8eaed; --block-accent: #5f6368; }
+  .block.t-lunch      { --block-bg: #fef1d6; --block-accent: #b06000; }
+  .block.t-cog-check  { --block-bg: #d9ead3; --block-accent: #37762f; }
+  .block.t-holiday    { --block-bg: #f1f3f4; --block-accent: #9aa0a6; color: var(--muted); }
+  .block.t-other      { --block-bg: #f1f3f4; --block-accent: #9aa0a6; }
+
+  /* Warnings panel */
+  .warn-panel { background: var(--panel); border-left: 1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; }
+  .warn-panel h2 { margin:0; padding: 12px 14px 8px; font-size:12px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); }
+  .warn-list { overflow-y:auto; flex:1; padding: 4px 0; }
+  .warn-item { padding: 8px 14px; border-bottom: 1px solid var(--line); cursor:pointer; }
+  .warn-item:hover { background: var(--bg); }
+  .warn-item .tag { display:inline-block; font-size:9.5px; padding: 1px 6px; border-radius:8px; background: var(--warn-soft); color: var(--warn); font-weight:600; margin-right:6px; letter-spacing:0.3px; }
+  .warn-item .tag.proximity { background: #fff4d6; color: #946a00; }
+  .warn-item .tag.guide { background: #e9e6f7; color: #5a4bb5; }
+  .warn-item .title { font-size:12px; font-weight:500; margin: 3px 0 2px; }
+  .warn-item .detail { font-size:11px; color:var(--muted); }
+  .warn-summary { padding: 10px 14px; background: var(--bg); border-bottom: 1px solid var(--line); font-size:12px; }
+  .warn-summary .row { display:flex; justify-content:space-between; padding: 2px 0; }
+  .warn-summary .row .n { font-weight:600; font-variant-numeric: tabular-nums; }
+
+  /* Guide palette */
+  .guide-palette { padding: 10px 14px; border-bottom:1px solid var(--line); font-size:11px; }
+  .guide-palette .label { color: var(--muted); font-weight:600; letter-spacing:0.3px; text-transform:uppercase; font-size:10px; margin-bottom:4px; }
+  .guide-pick-menu { position: absolute; background: var(--panel); border:1px solid var(--line); border-radius:4px; padding: 4px; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .guide-pick-menu button { display:block; width:100%; text-align:left; padding: 4px 8px; background: transparent; border:none; cursor:pointer; font-size:11px; border-radius:2px; }
+  .guide-pick-menu button:hover { background: var(--bg); }
+
+  /* Guide badge on block */
+  .guide-badge { display:inline-block; font-size:9px; padding: 0 4px; border-radius:7px; color: #fff; font-weight:600; vertical-align: middle; margin-left:3px; }
+  .guide-K { background:#3a7bd5; }
+  .guide-J { background:#7a3ad5; }
+  .guide-A { background:#d5933a; }
+  .guide-X { background:#888; }
+
+  /* Dates strip */
+  .day-dates { font-size:10px; color: var(--muted); font-weight:400; }
+
+  /* Footer/help */
+  .help { position:absolute; bottom:8px; right:360px; background: rgba(255,255,255,0.85); border:1px solid var(--line); padding:6px 10px; font-size:10.5px; color: var(--muted); border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">Forge Lunch Canvas <span class="sub">— Cohort 5/6 · 5-min grid</span></div>
+    <div class="week-tabs" id="week-tabs"></div>
+    <span class="warncount" id="warncount">0</span>
+    <div class="segment" id="view-seg">
+      <button data-view="grid" class="active" title="Time grid view (default)">Grid</button>
+      <button data-view="guide" title="Guide schedule — one column per guide">Guide schedule</button>
+    </div>
+    <div class="segment guide-seg" id="guide-seg">
+      <button data-gf="all" class="active">All</button>
+      <button data-gf="K" title="Kevin">K</button>
+      <button data-gf="J" title="John">J</button>
+      <button data-gf="A" title="Anand">A</button>
+      <button data-gf="X" title="Other">X</button>
+      <button data-gf="unassigned" title="Blocks with no guide">Unassigned</button>
+    </div>
+    <div class="actions">
+      <button id="btn-reset" title="Discard your changes and revert to the spreadsheet layout">Reset</button>
+      <button id="btn-export">Export JSON</button>
+      <button id="btn-import">Import</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="cal-wrap" id="cal-wrap">
+      <div class="cal" id="cal"></div>
+      <div class="help">Drag a block by its body. Held blocks snap to 5-min slots and the nearest grade column. Anchor blocks (lunch, movement, cog-check) are locked. Right-click a block to assign a guide.</div>
+    </div>
+    <div class="guide-view" id="guide-view" style="display:none;"></div>
+
+    <aside class="warn-panel">
+      <div class="guide-palette">
+        <div class="label">Guides in use</div>
+        <div id="guide-legend">No blocks assigned yet. Right-click any block to assign a guide (K, J, A).</div>
+      </div>
+      <div class="warn-summary" id="warn-summary"></div>
+      <h2>All Warnings</h2>
+      <div class="warn-list" id="warn-list"></div>
+    </aside>
+  </main>
+</div>
+
+<script>
+// ============================================================
+// DATA (embedded from spreadsheet parse)
+// ============================================================
+const _INITIAL_BLOCKS_RAW = [{"id":"blk_000","w":5,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_001","w":3,"d":3,"s":105,"dur":35,"g":"G5+G6","ttl":"Brief revision + final prep","std":["W.4"],"tp":"ela","tag":"brief-revision","anc":false,"pin":false},{"id":"blk_002","w":7,"d":0,"s":65,"dur":35,"g":"G5+G6","ttl":"Kitchen culture: mise en place","std":["L.6"],"tp":"challenge","tag":"kitchen-culture-mise","anc":false,"pin":false},{"id":"blk_003","w":8,"d":0,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_004","w":1,"d":1,"s":70,"dur":35,"g":"G5+G6","ttl":"Biology 1: digestive mechanical","std":["MS-LS1-3"],"tp":"biology","tag":"bio-1-mechanical","anc":false,"pin":false},{"id":"blk_005","w":4,"d":3,"s":240,"dur":90,"g":"G5+G6","ttl":"Wholesale supplier visit [PM required]","std":["W.7","SL.1"],"tp":"challenge","tag":"PIN-wholesale-visit","anc":false,"pin":true},{"id":"blk_006","w":5,"d":4,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_007","w":3,"d":3,"s":65,"dur":35,"g":"G5","ttl":"Unit conversion: weight","std":["5.MD.A.1"],"tp":"math","tag":"unit-conv-weight","anc":false,"pin":false},{"id":"blk_008","w":3,"d":4,"s":65,"dur":35,"g":"G5","ttl":"Fluency: fraction mult + unit conv","std":["5.NF.B.4","5.MD.A.1"],"tp":"math","tag":"fluency-frac-conv","anc":false,"pin":false},{"id":"blk_009","w":2,"d":0,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_010","w":5,"d":1,"s":105,"dur":35,"g":"G5+G6","ttl":"Cost model: verify each figure traces to source","std":["RI.1"],"tp":"math","tag":"cost-model-verify","anc":false,"pin":false},{"id":"blk_011","w":2,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_012","w":5,"d":2,"s":105,"dur":35,"g":"G5+G6","ttl":"Bar chart: nutritional targets","std":["3.MD.B.3"],"tp":"math","tag":null,"anc":false,"pin":null},{"id":"blk_013","w":5,"d":2,"s":65,"dur":35,"g":"G5","ttl":"Bar chart construction: axes and labeling","std":["3.MD.B.3"],"tp":"math","tag":null,"anc":false,"pin":null},{"id":"blk_014","w":4,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_015","w":4,"d":4,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_016","w":3,"d":2,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_017","w":3,"d":3,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_018","w":6,"d":2,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_019","w":2,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_020","w":6,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_021","w":2,"d":4,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_022","w":7,"d":0,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_023","w":7,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_024","w":8,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_025","w":2,"d":1,"s":30,"dur":35,"g":"G5","ttl":"Biology 5: gut-brain axis","std":["MS-LS1-3"],"tp":"biology","tag":"bio-5-gutbrain","anc":false,"pin":false},{"id":"blk_026","w":2,"d":0,"s":30,"dur":90,"g":"G5+G6","ttl":"Lab 1: raw ingredient samples","std":["MS-PS1-2","MS-ETS1-3"],"tp":"other","tag":"lab-raw","anc":false,"pin":false},{"id":"blk_027","w":7,"d":4,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_028","w":5,"d":2,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_029","w":3,"d":4,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_030","w":1,"d":2,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_031","w":1,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_032","w":7,"d":0,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_033","w":8,"d":4,"s":0,"dur":420,"g":"G5+G6","ttl":"FULL DAY: Panel Day 2 + mastery assessments + final reflection","std":["SL.4","W.1","L.6"],"tp":"challenge","tag":"PIN-panel-2","anc":false,"pin":true},{"id":"blk_034","w":1,"d":1,"s":110,"dur":35,"g":"G5+G6","ttl":"Challenge intro: client brief concept","std":["W.2","SL.1"],"tp":"ela","tag":"client-brief-concept","anc":false,"pin":false},{"id":"blk_035","w":6,"d":3,"s":65,"dur":60,"g":"G5+G6","ttl":"Chef communication + menu finalization","std":["W.4","SL.6"],"tp":"challenge","tag":"chef-communication","anc":false,"pin":false},{"id":"blk_036","w":3,"d":0,"s":65,"dur":35,"g":"G6","ttl":"Ratios applied to recipe (I do)","std":["6.RP.A.1"],"tp":"math","tag":"ratios-recipe-ido","anc":false,"pin":false},{"id":"blk_037","w":3,"d":1,"s":65,"dur":35,"g":"G6","ttl":"Ratio + unit rate: full recipe","std":["6.RP.A.1","6.RP.A.2"],"tp":"math","tag":"ratios-unitrate-recipe","anc":false,"pin":false},{"id":"blk_038","w":5,"d":0,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_039","w":3,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_040","w":1,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_041","w":7,"d":3,"s":240,"dur":60,"g":"G5+G6","ttl":"Forensic lab: another team's menu","std":["MS-ETS1-3"],"tp":"chem-lab","tag":"lab-forensic-other","anc":false,"pin":false},{"id":"blk_042","w":6,"d":2,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_043","w":6,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_044","w":4,"d":3,"s":65,"dur":35,"g":"G5","ttl":"Retail vs wholesale: decimal comparison","std":["5.NBT.B.7","5.NBT.A.3b"],"tp":"challenge","tag":"retail-wholesale-decimal","anc":false,"pin":false},{"id":"blk_045","w":4,"d":4,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_046","w":2,"d":4,"s":65,"dur":35,"g":"G5","ttl":"Fraction \u00d7 whole: instruction","std":["5.NF.B.4"],"tp":"math","tag":"frac-mult-instruction","anc":false,"pin":false},{"id":"blk_047","w":7,"d":4,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_048","w":4,"d":1,"s":105,"dur":35,"g":"G5+G6","ttl":"Biology 4b: insulin + metabolic follow-up","std":["MS-LS1-7"],"tp":"biology","tag":"bio-4b-insulin","anc":false,"pin":false},{"id":"blk_049","w":6,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_050","w":8,"d":2,"s":30,"dur":60,"g":"G5+G6","ttl":"Guide review of drafts (live feedback)","std":["W.1","W.4"],"tp":"other","tag":"guide-review-drafts","anc":false,"pin":false},{"id":"blk_051","w":8,"d":2,"s":240,"dur":90,"g":"G5+G6","ttl":"Final rehearsal (simulated panel Q&A)","std":["SL.4","SL.5","SL.6"],"tp":"challenge","tag":"final-rehearsal","anc":false,"pin":false},{"id":"blk_052","w":4,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_053","w":2,"d":3,"s":70,"dur":60,"g":"G5+G6","ttl":"Client brief: model + team draft (I do / We do)","std":["W.2","W.4","SL.1"],"tp":"ela","tag":"client-brief-draft","anc":false,"pin":false},{"id":"blk_054","w":7,"d":2,"s":0,"dur":420,"g":"G5+G6","ttl":"FULL DAY: Kitchen visit (cook in partner kitchen)","std":["W.7"],"tp":"challenge","tag":"PIN-kitchen-visit","anc":false,"pin":true},{"id":"blk_055","w":4,"d":0,"s":105,"dur":35,"g":"G6","ttl":"Recipe scaling + shopping list (ratio framing)","std":["6.RP.A.2"],"tp":"math","tag":"recipe-scaling","anc":false,"pin":false},{"id":"blk_056","w":3,"d":0,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_057","w":1,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_058","w":1,"d":2,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_059","w":3,"d":0,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_060","w":6,"d":2,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_061","w":4,"d":0,"s":105,"dur":35,"g":"G5","ttl":"Recipe scaling + shopping list","std":["5.NF.B.4","5.MD.A.1"],"tp":"math","tag":"recipe-scaling","anc":false,"pin":false},{"id":"blk_062","w":8,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_063","w":4,"d":3,"s":65,"dur":35,"g":"G6","ttl":"Retail vs wholesale: unit rate","std":["6.RP.A.2"],"tp":"challenge","tag":"retail-wholesale-unitrate","anc":false,"pin":false},{"id":"blk_064","w":2,"d":0,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_065","w":5,"d":0,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_066","w":5,"d":1,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_067","w":8,"d":0,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_068","w":2,"d":0,"s":125,"dur":35,"g":"G5+G6","ttl":"FoodData Central: navigation","std":["W.7"],"tp":"challenge","tag":"fooddata-nav","anc":false,"pin":false},{"id":"blk_069","w":8,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_070","w":2,"d":4,"s":65,"dur":35,"g":"G6","ttl":"Ratios: concept (a:b)","std":["6.RP.A.1"],"tp":"other","tag":"ratios-concept","anc":false,"pin":false},{"id":"blk_071","w":6,"d":1,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_072","w":3,"d":0,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_073","w":2,"d":1,"s":160,"dur":20,"g":"G5+G6","ttl":"Cognitive baseline: first run","std":[],"tp":"cog-check","tag":"cog-baseline-firstrun","anc":true,"pin":false},{"id":"blk_074","w":6,"d":2,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_075","w":6,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_076","w":6,"d":2,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_077","w":7,"d":0,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_078","w":8,"d":0,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_079","w":7,"d":0,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_080","w":4,"d":0,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_081","w":4,"d":0,"s":65,"dur":35,"g":"G5+G6","ttl":"Restaurant meeting debrief (all grades)","std":["W.4","SL.1"],"tp":"ela","tag":"rest-debrief","anc":false,"pin":false},{"id":"blk_082","w":4,"d":1,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_083","w":5,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_084","w":4,"d":1,"s":65,"dur":35,"g":"G5+G6","ttl":"Shopping list finalization + grocery prep","std":["W.7"],"tp":"challenge","tag":"shopping-list-final","anc":false,"pin":false},{"id":"blk_085","w":5,"d":0,"s":65,"dur":35,"g":"G5+G6","ttl":"Overhead: concept","std":["5.NBT.B.7","7.RP.A.3"],"tp":"math","tag":"overhead-concept","anc":false,"pin":false},{"id":"blk_086","w":5,"d":1,"s":65,"dur":35,"g":"G5+G6","ttl":"Cost model build: ingredients + labor + overhead","std":["5.NBT.B.7","5.MD.A.1"],"tp":"math","tag":"cost-model-build","anc":false,"pin":false},{"id":"blk_087","w":8,"d":1,"s":30,"dur":35,"g":"G5+G6","ttl":"Presentation structure + draft (I do)","std":["W.1","SL.4"],"tp":"challenge","tag":"pres-structure","anc":false,"pin":false},{"id":"blk_088","w":4,"d":4,"s":105,"dur":35,"g":"G5+G6","ttl":"Supplier visit debrief + wholesale data entry","std":["W.4","W.7"],"tp":"ela","tag":"supplier-debrief","anc":false,"pin":false},{"id":"blk_089","w":3,"d":4,"s":240,"dur":90,"g":"G5+G6","ttl":"Restaurant partner meeting [PM required]","std":["SL.1","SL.4","SL.6","W.2"],"tp":"challenge","tag":"PIN-restaurant-meeting","anc":false,"pin":true},{"id":"blk_090","w":2,"d":2,"s":70,"dur":35,"g":"G5+G6","ttl":"Decimal fluency: addition/subtraction on ingredient prices","std":["5.NBT.B.7"],"tp":"other","tag":"decimal-fluency","anc":false,"pin":false},{"id":"blk_091","w":8,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_092","w":2,"d":0,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_093","w":2,"d":3,"s":30,"dur":35,"g":"G5","ttl":"Biology 4: glucose and energy","std":["MS-LS1-7"],"tp":"biology","tag":"bio-4-glucose","anc":false,"pin":false},{"id":"blk_094","w":7,"d":1,"s":65,"dur":35,"g":"G5+G6","ttl":"Kitchen culture: safety + movement","std":[],"tp":"movement","tag":"kitchen-culture-safety","anc":true,"pin":false},{"id":"blk_095","w":3,"d":0,"s":105,"dur":35,"g":"G5+G6","ttl":"Restaurant meeting prep: conduct","std":["SL.1","SL.6"],"tp":"challenge","tag":"rest-prep-conduct","anc":false,"pin":false},{"id":"blk_096","w":3,"d":1,"s":105,"dur":35,"g":"G5+G6","ttl":"Restaurant meeting prep: role play","std":["SL.1","SL.4","SL.6"],"tp":"challenge","tag":"rest-prep-roleplay","anc":false,"pin":false},{"id":"blk_097","w":2,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_098","w":7,"d":1,"s":105,"dur":35,"g":"G5+G6","ttl":"Kitchen culture: knife skills","std":[],"tp":"challenge","tag":"kitchen-culture-knife","anc":false,"pin":false},{"id":"blk_099","w":2,"d":4,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_100","w":2,"d":4,"s":105,"dur":35,"g":"G5","ttl":"Fraction \u00d7 whole: practice","std":["5.NF.B.4"],"tp":"math","tag":"frac-mult-practice","anc":false,"pin":false},{"id":"blk_101","w":3,"d":1,"s":65,"dur":35,"g":"G5","ttl":"Fraction mult: full recipe application","std":["5.NF.B.4"],"tp":"math","tag":"frac-mult-full-recipe","anc":false,"pin":false},{"id":"blk_102","w":3,"d":2,"s":65,"dur":35,"g":"G5","ttl":"Unit conversion: volume","std":["5.MD.A.1"],"tp":"math","tag":"unit-conv-volume","anc":false,"pin":false},{"id":"blk_103","w":7,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_104","w":7,"d":4,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_105","w":1,"d":1,"s":30,"dur":35,"g":"G5","ttl":"Math diagnostic","std":["5.NF.B.4","5.MD.A.1"],"tp":"diagnostic","tag":"math-diagnostic","anc":false,"pin":false},{"id":"blk_106","w":5,"d":0,"s":105,"dur":35,"g":"G5+G6","ttl":"Overhead application: fixed dollar figure","std":["5.NBT.B.7"],"tp":"math","tag":"overhead-application","anc":false,"pin":false},{"id":"blk_107","w":4,"d":0,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_108","w":3,"d":4,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_109","w":3,"d":1,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_110","w":3,"d":2,"s":105,"dur":35,"g":"G5+G6","ttl":"Guide review of draft briefs (live feedback)","std":["W.4","SL.1"],"tp":"ela","tag":"guide-review-briefs","anc":false,"pin":false},{"id":"blk_111","w":4,"d":4,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_112","w":2,"d":2,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_113","w":8,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_114","w":8,"d":2,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_115","w":1,"d":2,"s":30,"dur":45,"g":"G5+G6","ttl":"Chem test demo: iodine + Benedict's","std":["5-PS1-3","5-PS1-4","MS-PS1-2"],"tp":"chem-lab","tag":"chem-demo-iodine","anc":false,"pin":false},{"id":"blk_116","w":6,"d":0,"s":105,"dur":35,"g":"G5+G6","ttl":"Nutritional analysis: session 2 (5-day scan)","std":["W.7"],"tp":"challenge","tag":"nutrition-2","anc":false,"pin":false},{"id":"blk_117","w":5,"d":0,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_118","w":3,"d":2,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_119","w":3,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_120","w":2,"d":1,"s":120,"dur":35,"g":"G5+G6","ttl":"FoodData Central: interpretation","std":["W.7","L.6"],"tp":"challenge","tag":"fooddata-interp","anc":false,"pin":false},{"id":"blk_121","w":5,"d":4,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_122","w":5,"d":4,"s":65,"dur":35,"g":"G5+G6","ttl":"Phone etiquette + cold calling","std":["SL.1","SL.6"],"tp":"other","tag":"phone-etiquette","anc":false,"pin":false},{"id":"blk_123","w":5,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_124","w":1,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_125","w":5,"d":4,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_126","w":1,"d":4,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_127","w":3,"d":4,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_128","w":2,"d":1,"s":70,"dur":45,"g":"G5+G6","ttl":"Cognitive baseline: setup","std":["5.MD.A.2","6.SP.B.5"],"tp":"cog-check","tag":"cog-baseline-setup","anc":true,"pin":false},{"id":"blk_129","w":6,"d":0,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_130","w":7,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_131","w":7,"d":4,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_132","w":1,"d":4,"s":30,"dur":35,"g":"G5+G6","ttl":"Biology 3: macronutrients","std":["MS-LS1-7"],"tp":"biology","tag":"bio-3-macros","anc":false,"pin":false},{"id":"blk_133","w":1,"d":2,"s":80,"dur":45,"g":"G5+G6","ttl":"Chem test demo: brown paper + Biuret","std":["5-PS1-3","5-PS1-4","MS-PS1-2"],"tp":"chem-lab","tag":"chem-demo-biuret","anc":false,"pin":false},{"id":"blk_134","w":6,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_135","w":4,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_136","w":7,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_137","w":2,"d":4,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_138","w":5,"d":2,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_139","w":1,"d":3,"s":30,"dur":45,"g":"G5+G6","ttl":"Chem test practice: iodine + Benedict's","std":["5-PS1-3","MS-PS1-2"],"tp":"chem-lab","tag":"chem-practice-iodine","anc":false,"pin":false},{"id":"blk_140","w":3,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_141","w":3,"d":4,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_142","w":4,"d":2,"s":0,"dur":420,"g":"G5+G6","ttl":"FULL DAY: Grocery store visit","std":["W.7","MS-ETS1-1"],"tp":"challenge","tag":"PIN-grocery-visit","anc":false,"pin":true},{"id":"blk_143","w":1,"d":3,"s":80,"dur":45,"g":"G5+G6","ttl":"Chem test practice: brown paper + Biuret","std":["5-PS1-3","MS-PS1-2"],"tp":"chem-lab","tag":"chem-practice-biuret","anc":false,"pin":false},{"id":"blk_144","w":4,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_145","w":8,"d":1,"s":70,"dur":60,"g":"G5+G6","ttl":"Presentation build: team drafts sections","std":["W.1","SL.4"],"tp":"challenge","tag":"pres-build","anc":false,"pin":false},{"id":"blk_146","w":3,"d":2,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_147","w":3,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_148","w":1,"d":4,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_149","w":4,"d":4,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_150","w":5,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_151","w":7,"d":0,"s":105,"dur":35,"g":"G5+G6","ttl":"Mean/median/mode + cognitive data review","std":["6.SP.B.5"],"tp":"cog-check","tag":"mmm-data","anc":true,"pin":false},{"id":"blk_152","w":2,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_153","w":2,"d":4,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_154","w":1,"d":4,"s":110,"dur":35,"g":"G5+G6","ttl":"Culture build: teams and roles","std":["SL.1"],"tp":"challenge","tag":"culture-build","anc":false,"pin":false},{"id":"blk_155","w":6,"d":1,"s":65,"dur":35,"g":"G5+G6","ttl":"Nutritional analysis: macros finalized","std":["W.7"],"tp":"challenge","tag":"nutrition-macros-final","anc":false,"pin":false},{"id":"blk_156","w":6,"d":2,"s":65,"dur":35,"g":"G5+G6","ttl":"Gap analysis: which day, which nutrient","std":["MS-ETS1-3"],"tp":"other","tag":"gap-analysis","anc":false,"pin":false},{"id":"blk_157","w":3,"d":4,"s":65,"dur":35,"g":"G6","ttl":"Mean/median/mode on cognitive data sample","std":["6.SP.B.5"],"tp":"cog-check","tag":"mmm-data","anc":true,"pin":false},{"id":"blk_158","w":8,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_159","w":8,"d":3,"s":240,"dur":150,"g":"G5+G6","ttl":"PANEL DAY 1 (5 teams present + defend)","std":["SL.4","SL.5","W.1"],"tp":"challenge","tag":"PIN-panel-1","anc":false,"pin":true},{"id":"blk_160","w":7,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_161","w":7,"d":4,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_162","w":1,"d":2,"s":130,"dur":35,"g":"G5+G6","ttl":"Biology 2: digestive chemical","std":["MS-LS1-7"],"tp":"chem","tag":"bio-2-chemical","anc":false,"pin":false},{"id":"blk_163","w":2,"d":3,"s":30,"dur":35,"g":"G6","ttl":"Biology 5: gut-brain axis","std":["MS-LS1-3"],"tp":"biology","tag":"bio-5-gutbrain","anc":false,"pin":false},{"id":"blk_164","w":1,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_165","w":6,"d":0,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_166","w":7,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_167","w":2,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_168","w":5,"d":3,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_169","w":5,"d":0,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_170","w":5,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_171","w":5,"d":4,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_172","w":8,"d":2,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_173","w":8,"d":0,"s":30,"dur":35,"g":"G5+G6","ttl":"Brand voice analysis + caption writing","std":["W.4","W.6","L.6"],"tp":"challenge","tag":"brand-voice","anc":false,"pin":false},{"id":"blk_174","w":2,"d":2,"s":30,"dur":35,"g":"G5+G6","ttl":"Seminar: Reading 2 on calories as limited metric","std":["RI.8","SL.3"],"tp":"ela","tag":"seminar-reading-2","anc":false,"pin":false},{"id":"blk_175","w":4,"d":3,"s":105,"dur":35,"g":"G5+G6","ttl":"Labor cost: concept + estimation","std":["5.MD.A.1","7.RP.A.2"],"tp":"math","tag":"labor-concept","anc":false,"pin":false},{"id":"blk_176","w":6,"d":2,"s":105,"dur":35,"g":"G5+G6","ttl":"Buffer / reteach block","std":[],"tp":"other","tag":null,"anc":false,"pin":null},{"id":"blk_177","w":2,"d":2,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_178","w":2,"d":4,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_179","w":5,"d":3,"s":105,"dur":35,"g":"G5+G6","ttl":"Scrimmage: team cost model Q&A","std":[],"tp":"math","tag":"scrimmage","anc":false,"pin":false},{"id":"blk_180","w":2,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_181","w":5,"d":4,"s":105,"dur":35,"g":"G5+G6","ttl":"Buffer / reteach block","std":[],"tp":"other","tag":null,"anc":false,"pin":null},{"id":"blk_182","w":4,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_183","w":6,"d":4,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_184","w":6,"d":0,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_185","w":6,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_186","w":3,"d":0,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_187","w":3,"d":1,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_188","w":3,"d":0,"s":65,"dur":35,"g":"G5","ttl":"Fraction mult applied to recipe (I do)","std":["5.NF.B.4"],"tp":"math","tag":"frac-mult-recipe-ido","anc":false,"pin":false},{"id":"blk_189","w":1,"d":2,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_190","w":4,"d":0,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_191","w":2,"d":0,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_192","w":4,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_193","w":8,"d":0,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_194","w":7,"d":1,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_195","w":3,"d":2,"s":65,"dur":35,"g":"G6","ttl":"Ratio: unit rate as cost per ounce","std":["6.RP.A.2"],"tp":"math","tag":"ratios-unitrate","anc":false,"pin":false},{"id":"blk_196","w":3,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_197","w":5,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_198","w":5,"d":3,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_199","w":5,"d":2,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_200","w":3,"d":2,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_201","w":3,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_202","w":7,"d":4,"s":65,"dur":60,"g":"G5+G6","ttl":"Kitchen debrief + cost model finalization","std":["W.4","RI.1"],"tp":"math","tag":"cost-model-final","anc":false,"pin":false},{"id":"blk_203","w":1,"d":4,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_204","w":6,"d":4,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_205","w":4,"d":4,"s":65,"dur":35,"g":"G5","ttl":"Labor calc: hourly \u00d7 time / 30","std":["5.NBT.B.7"],"tp":"math","tag":"labor-calc-hourly","anc":false,"pin":false},{"id":"blk_206","w":4,"d":3,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_207","w":5,"d":4,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_208","w":7,"d":3,"s":30,"dur":90,"g":"G5+G6","ttl":"Lab 2: cooked ingredient samples","std":["MS-PS1-2","MS-LS1-7"],"tp":"other","tag":"lab-cooked","anc":false,"pin":false},{"id":"blk_209","w":6,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_210","w":1,"d":4,"s":70,"dur":35,"g":"G5+G6","ttl":"Seminar: Reading 1 on food and the body","std":["RI.1","RI.2","SL.1"],"tp":"ela","tag":"seminar-reading-1","anc":false,"pin":false},{"id":"blk_211","w":8,"d":3,"s":30,"dur":60,"g":"G5+G6","ttl":"Rehearsal revision + last prep","std":["W.4","SL.4"],"tp":"challenge","tag":"rehearsal-revision","anc":false,"pin":false},{"id":"blk_212","w":8,"d":0,"s":70,"dur":45,"g":"G5+G6","ttl":"Video editing: kitchen visit footage","std":["W.6"],"tp":"challenge","tag":"video-editing","anc":false,"pin":false},{"id":"blk_213","w":4,"d":4,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_214","w":5,"d":0,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_215","w":3,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_216","w":3,"d":2,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_217","w":1,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_218","w":1,"d":4,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_219","w":7,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_220","w":6,"d":4,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_221","w":3,"d":4,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_222","w":7,"d":0,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_223","w":1,"d":3,"s":390,"dur":30,"g":"G5+G6","ttl":"Wrap / reflection (3:30-4:00)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_224","w":5,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_225","w":4,"d":4,"s":65,"dur":35,"g":"G6","ttl":"Labor calc: unit rate form","std":["6.RP.A.2"],"tp":"math","tag":"labor-calc-unitrate","anc":false,"pin":false},{"id":"blk_226","w":2,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_227","w":2,"d":2,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_228","w":5,"d":2,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_229","w":1,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_230","w":8,"d":2,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_231","w":8,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_232","w":6,"d":3,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_233","w":6,"d":3,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_234","w":6,"d":4,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_235","w":6,"d":0,"s":30,"dur":30,"g":"G5+G6","ttl":"Cognitive daily check","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_236","w":6,"d":0,"s":65,"dur":35,"g":"G5+G6","ttl":"Nutritional analysis of menu: session 1","std":["W.7","L.6"],"tp":"challenge","tag":"nutrition-1","anc":false,"pin":false},{"id":"blk_237","w":6,"d":4,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_238","w":6,"d":0,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_239","w":3,"d":3,"s":65,"dur":35,"g":"G6","ttl":"Mean / median / mode: concept","std":["6.SP.B.5"],"tp":"other","tag":"mmm-concept","anc":false,"pin":false},{"id":"blk_240","w":1,"d":1,"s":30,"dur":35,"g":"G6","ttl":"Math diagnostic","std":["6.RP.A.1","6.SP.B.5"],"tp":"diagnostic","tag":"math-diagnostic","anc":false,"pin":false},{"id":"blk_241","w":4,"d":0,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_242","w":7,"d":1,"s":0,"dur":30,"g":"G5+G6","ttl":"Movement / stand-up (9:00-9:30)","std":[],"tp":"movement","tag":null,"anc":true,"pin":null},{"id":"blk_243","w":5,"d":2,"s":65,"dur":35,"g":"G6","ttl":"Bar chart: cost per meal","std":["6.SP.B.5"],"tp":"math","tag":null,"anc":false,"pin":null},{"id":"blk_244","w":8,"d":1,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_245","w":8,"d":2,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_246","w":2,"d":1,"s":30,"dur":35,"g":"G6","ttl":"Biology 4: glucose and energy","std":["MS-LS1-7"],"tp":"biology","tag":"bio-4-glucose","anc":false,"pin":false},{"id":"blk_247","w":5,"d":3,"s":65,"dur":35,"g":"G5+G6","ttl":"Cost model finalization: lock draft","std":["W.2"],"tp":"math","tag":"cost-model-final","anc":false,"pin":false},{"id":"blk_248","w":3,"d":0,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_249","w":4,"d":3,"s":225,"dur":15,"g":"G5+G6","ttl":"Cog daily check (12:45-1:00)","std":[],"tp":"cog-check","tag":null,"anc":true,"pin":null},{"id":"blk_250","w":6,"d":4,"s":65,"dur":90,"g":"G5+G6","ttl":"BUFFER DAY: reteach / catch-up / intervention","std":[],"tp":"other","tag":null,"anc":false,"pin":null},{"id":"blk_251","w":4,"d":0,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_252","w":4,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_253","w":1,"d":2,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_254","w":2,"d":1,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_255","w":2,"d":2,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_256","w":5,"d":2,"s":180,"dur":45,"g":"G5+G6","ttl":"Lunch (12:00-12:45)","std":[],"tp":"lunch","tag":null,"anc":true,"pin":null},{"id":"blk_257","w":6,"d":1,"s":105,"dur":35,"g":"G5+G6","ttl":"Buffer / reteach block","std":[],"tp":"other","tag":null,"anc":false,"pin":null},{"id":"blk_258","w":2,"d":4,"s":105,"dur":35,"g":"G6","ttl":"Ratios: practice","std":["6.RP.A.1"],"tp":"other","tag":"ratios-practice","anc":false,"pin":false}];
+
+// Drop any cog-check block that lives fully inside the 9:30-10:00 AM window.
+// These were auto-seeded and are being removed by design.
+function isDropped930CogCheck(b) {
+  return b.tp === 'cog-check' && b.s >= 30 && (b.s + b.dur) <= 60;
+}
+const _DROPPED_930 = _INITIAL_BLOCKS_RAW.filter(isDropped930CogCheck);
+const INITIAL_BLOCKS = _INITIAL_BLOCKS_RAW.filter(b => !isDropped930CogCheck(b));
+(function auditDropped930() {
+  const byWeek = {}, byDay = {}, ids = [];
+  for (const b of _DROPPED_930) {
+    byWeek[b.w] = (byWeek[b.w] || 0) + 1;
+    byDay[b.d]  = (byDay[b.d]  || 0) + 1;
+    ids.push(b.id);
+  }
+  console.log(`[audit] Removed ${_DROPPED_930.length} cog-check block(s) fully inside the 9:30-10:00 AM window.`);
+  console.log('[audit] By week:', byWeek);
+  console.log('[audit] By day (0=Mon..4=Fri):', byDay);
+  console.log('[audit] Dropped ids:', ids);
+})();
+const PREREQS = {"bio-2-chemical": ["bio-1-mechanical"], "bio-3-macros": ["bio-2-chemical"], "bio-4-glucose": ["bio-3-macros"], "bio-4b-insulin": ["bio-4-glucose"], "bio-5-gutbrain": ["bio-4-glucose"], "chem-practice-iodine": ["chem-demo-iodine"], "chem-practice-biuret": ["chem-demo-biuret"], "lab-raw": ["chem-practice-iodine", "chem-practice-biuret"], "lab-cooked": ["lab-raw"], "lab-forensic-other": ["lab-cooked"], "ratios-practice": ["ratios-concept"], "ratios-unitrate": ["ratios-practice"], "ratios-recipe-ido": ["ratios-practice"], "ratios-unitrate-recipe": ["ratios-recipe-ido"], "frac-mult-instruction": ["ratios-practice"], "frac-mult-practice": ["frac-mult-instruction"], "frac-mult-recipe-ido": ["frac-mult-practice"], "frac-mult-full-recipe": ["frac-mult-recipe-ido"], "unit-conv-weight": ["frac-mult-practice"], "unit-conv-volume": ["unit-conv-weight"], "fluency-frac-conv": ["unit-conv-volume"], "recipe-scaling": ["fluency-frac-conv", "PIN-restaurant-meeting"], "shopping-list-final": ["recipe-scaling"], "PIN-grocery-visit": ["shopping-list-final"], "retail-wholesale-decimal": ["PIN-grocery-visit", "PIN-wholesale-visit"], "retail-wholesale-unitrate": ["PIN-grocery-visit", "PIN-wholesale-visit"], "supplier-debrief": ["PIN-wholesale-visit"], "labor-concept": ["PIN-wholesale-visit"], "labor-calc-hourly": ["labor-concept"], "labor-calc-unitrate": ["labor-calc-hourly"], "overhead-concept": ["labor-concept"], "overhead-application": ["overhead-concept"], "cost-model-build": ["retail-wholesale-decimal", "labor-calc-hourly", "overhead-application"], "cost-model-verify": ["cost-model-build"], "cost-model-final": ["cost-model-verify", "kitchen-debrief"], "client-brief-draft": ["client-brief-concept"], "guide-review-briefs": ["client-brief-draft"], "brief-revision": ["guide-review-briefs"], "rest-prep-roleplay": ["brief-revision"], "rest-prep-conduct": ["rest-prep-roleplay"], "PIN-restaurant-meeting": ["rest-prep-conduct"], "rest-debrief": ["PIN-restaurant-meeting"], "fooddata-interp": ["fooddata-nav"], "nutrition-1": ["fooddata-interp", "bio-3-macros"], "nutrition-2": ["nutrition-1"], "nutrition-macros-final": ["nutrition-2"], "gap-analysis": ["nutrition-macros-final"], "chef-communication": ["gap-analysis"], "kitchen-culture-knife": ["kitchen-culture-mise"], "kitchen-culture-safety": ["kitchen-culture-knife"], "PIN-kitchen-visit": ["kitchen-culture-safety", "chef-communication", "cost-model-verify"], "kitchen-debrief": ["PIN-kitchen-visit"], "brand-voice": ["PIN-kitchen-visit"], "video-editing": ["PIN-kitchen-visit"], "pres-structure": ["cost-model-final", "nutrition-macros-final"], "pres-build": ["pres-structure"], "guide-review-drafts": ["pres-build"], "scrimmage": ["guide-review-drafts"], "final-rehearsal": ["scrimmage", "video-editing", "brand-voice"], "rehearsal-revision": ["final-rehearsal"], "PIN-panel-1": ["rehearsal-revision"], "PIN-panel-2": ["PIN-panel-1"], "seminar-reading-1": ["bio-3-macros"], "seminar-reading-2": ["bio-4-glucose"], "mmm-data": ["mmm-concept", "cog-baseline-firstrun"], "cog-baseline-firstrun": ["cog-baseline-setup"]};      // concept_tag -> [prereq_tags]
+const PIN_SERVICE = {"client-brief-concept": "PIN-restaurant-meeting", "client-brief-draft": "PIN-restaurant-meeting", "guide-review-briefs": "PIN-restaurant-meeting", "brief-revision": "PIN-restaurant-meeting", "rest-prep-roleplay": "PIN-restaurant-meeting", "rest-prep-conduct": "PIN-restaurant-meeting", "ratios-recipe-ido": "PIN-restaurant-meeting", "recipe-scaling": "PIN-grocery-visit", "shopping-list-final": "PIN-grocery-visit", "fluency-frac-conv": "PIN-grocery-visit", "unit-conv-weight": "PIN-grocery-visit", "unit-conv-volume": "PIN-grocery-visit", "retail-wholesale-decimal": "PIN-wholesale-visit", "retail-wholesale-unitrate": "PIN-wholesale-visit", "kitchen-culture-mise": "PIN-kitchen-visit", "kitchen-culture-knife": "PIN-kitchen-visit", "kitchen-culture-safety": "PIN-kitchen-visit", "chef-communication": "PIN-kitchen-visit", "gap-analysis": "PIN-kitchen-visit", "nutrition-macros-final": "PIN-kitchen-visit", "pres-structure": "PIN-panel-1", "pres-build": "PIN-panel-1", "guide-review-drafts": "PIN-panel-1", "scrimmage": "PIN-panel-1", "final-rehearsal": "PIN-panel-1", "rehearsal-revision": "PIN-panel-1", "brand-voice": "PIN-panel-1", "video-editing": "PIN-panel-1"};  // concept_tag -> pin_tag it prepares for
+
+// Week start dates (Mon). Week number -> ISO date
+const WEEK_START_DATES = {
+  1: '2026-09-07', 2: '2026-09-14', 3: '2026-09-21', 4: '2026-09-28',
+  5: '2026-10-05', 6: '2026-10-12', 7: '2026-10-19', 8: '2026-10-26',
+};
+const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri'];
+
+const SLOT_MIN = 5;              // 5 minutes per slot
+const SLOT_PX = 14;              // matches --slot-h in CSS
+const DAY_START_MIN = 0;         // 9:00 AM = 0 min offset in our grid
+const DAY_END_MIN = 420;         // 4:00 PM = 420 min
+const SLOTS_PER_DAY = DAY_END_MIN / SLOT_MIN;   // 84
+
+// Pin proximity threshold: how many days ahead of its pin is a block acceptable?
+// > this triggers "stale / too-far-from-use" warning.
+const PIN_PROXIMITY_DAYS = 7;
+
+const STORAGE_KEY = 'forge-lunch-canvas-v1';
+
+// ============================================================
+// STATE
+// ============================================================
+let state = loadState();
+
+function loadState() {
+  const DROPPED_IDS = new Set(_DROPPED_930.map(b => b.id));
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.blocks && Array.isArray(parsed.blocks)) {
+        // Merge with current INITIAL_BLOCKS: if a block id is missing from saved,
+        // pull the initial. This handles adding new blocks to a template.
+        const byId = {};
+        for (const b of INITIAL_BLOCKS) byId[b.id] = {...b};
+        for (const sb of parsed.blocks) {
+          if (DROPPED_IDS.has(sb.id)) continue; // Migration: strip removed cog-checks
+          if (byId[sb.id]) byId[sb.id] = {...byId[sb.id], ...sb};
+        }
+        return {
+          blocks: Object.values(byId),
+          currentWeek: parsed.currentWeek || 1,
+          viewMode: parsed.viewMode === 'guide' ? 'guide' : 'grid',
+          guideFilter: parsed.guideFilter || 'all',
+          selectedBlockId: parsed.selectedBlockId || null,
+          selectedPinId: parsed.selectedPinId || null,
+          fullChallenge: !!parsed.fullChallenge,
+        };
+      }
+    }
+  } catch(e) {}
+  return {
+    blocks: INITIAL_BLOCKS.map(b => ({...b})),
+    currentWeek: 1,
+    viewMode: 'grid',
+    guideFilter: 'all',
+    selectedBlockId: null,
+    selectedPinId: null,
+    fullChallenge: false,
+  };
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) { console.warn('Could not save state', e); }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+const cal = document.getElementById('cal');
+const calWrap = document.getElementById('cal-wrap');
+
+function dayOffset(week, day) {
+  // Days since start of Week 1 Mon (Sep 7 2026)
+  return (week - 1) * 7 + day;
+}
+
+function blockDateStr(b) {
+  // compute date for a block
+  const wk = WEEK_START_DATES[b.w];
+  if (!wk) return '';
+  const d = new Date(wk + 'T00:00:00');
+  d.setDate(d.getDate() + b.d);
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function renderWeekTabs() {
+  const tabs = document.getElementById('week-tabs');
+  tabs.innerHTML = '';
+  const warningsByWeek = computeWarningsByWeek();
+  const pinWeeks = new Set();
+  for (const b of state.blocks) { if (b.pin) pinWeeks.add(b.w); }
+
+  // Full challenge tab — position 0, active when state.fullChallenge is on
+  const fullBtn = document.createElement('button');
+  fullBtn.className = 'week-tab full-challenge-tab' + (state.fullChallenge ? ' active' : '');
+  const totalWarn = Object.values(warningsByWeek).reduce((a, b) => a + b, 0);
+  const anyPin = pinWeeks.size > 0 ? '<span class="pin-glyph" title="contains pin days">⚑</span>' : '';
+  fullBtn.innerHTML = `${anyPin}Full challenge${totalWarn > 0 ? `<span class="count">${totalWarn}</span>` : ''}`;
+  fullBtn.onclick = () => { state.fullChallenge = true; saveState(); render(); };
+  tabs.appendChild(fullBtn);
+
+  // Numbered week tabs — active when NOT in full-challenge mode and matching currentWeek
+  for (let w = 1; w <= 8; w++) {
+    const btn = document.createElement('button');
+    const isActive = !state.fullChallenge && state.currentWeek === w;
+    btn.className = 'week-tab' + (isActive ? ' active' : '');
+    const wct = warningsByWeek[w] || 0;
+    const pin = pinWeeks.has(w) ? '<span class="pin-glyph" title="contains pin day">⚑</span>' : '';
+    btn.innerHTML = `${pin}Wk ${w}${wct > 0 ? `<span class="count">${wct}</span>` : ''}`;
+    btn.onclick = () => { state.fullChallenge = false; state.currentWeek = w; saveState(); render(); };
+    tabs.appendChild(btn);
+  }
+}
+
+function renderCalendar() {
+  cal.innerHTML = '';
+  const weeksToRender = state.fullChallenge ? [1,2,3,4,5,6,7,8] : [state.currentWeek];
+  const totalGradeCols = weeksToRender.length * 10;
+
+  // Update the grid template so horizontal width matches the week count.
+  cal.style.gridTemplateColumns = `54px repeat(${totalGradeCols}, var(--col-w))`;
+  // Row 1 = week banner (only used in full challenge). Row 2 = day headers.
+  // Row 3 = grade subheaders. Rows 4..(4+SLOTS_PER_DAY-1) = slot grid.
+  const bannerRowHeight = state.fullChallenge ? '26px' : '0';
+  cal.style.gridTemplateRows = `${bannerRowHeight} auto auto repeat(${SLOTS_PER_DAY}, var(--slot-h))`;
+  cal.classList.toggle('full-challenge', !!state.fullChallenge);
+
+  // Build header cells
+  const timeCorner = document.createElement('div');
+  timeCorner.className = 'hdr time-corner';
+  timeCorner.style.gridRow = '1 / 4';  // span banner + day + grade rows
+  timeCorner.style.gridColumn = '1';
+  cal.appendChild(timeCorner);
+
+  // Per-week header construction
+  weeksToRender.forEach((week, weekIndex) => {
+    const weekStart = new Date(WEEK_START_DATES[week] + 'T00:00:00');
+    const weekColStart = 2 + weekIndex * 10;   // first grade column for this week
+    const weekColEnd   = weekColStart + 10;    // exclusive
+
+    // Week banner — only visible in full challenge mode
+    if (state.fullChallenge) {
+      const banner = document.createElement('div');
+      banner.className = 'hdr week-banner';
+      banner.dataset.week = week;
+      banner.style.gridRow = '1';
+      banner.style.gridColumn = `${weekColStart} / ${weekColEnd}`;
+      const dateStr = weekStart.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+      banner.innerHTML = `<span class="wb-num">Wk ${week}</span> <span class="wb-date">${dateStr}</span>`;
+      banner.onclick = () => {
+        state.fullChallenge = false;
+        state.currentWeek = week;
+        saveState();
+        render();
+      };
+      cal.appendChild(banner);
+    }
+
+    for (let d = 0; d < 5; d++) {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + d);
+      const dateStr = date.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+
+      // Earliest pin block for this (week, day), if any
+      const pinsThisDay = state.blocks
+        .filter(b => b.w === week && b.d === d && b.pin)
+        .sort((a, b) => a.s - b.s);
+      const pinBlock = pinsThisDay[0] || null;
+      let pinLine = '';
+      if (pinBlock) {
+        const fullTitle = pinBlock.ttl;
+        const shortTitle = fullTitle.length > 24 ? fullTitle.slice(0, 22) + '…' : fullTitle;
+        pinLine = `<div class="pin-label" data-pin-id="${pinBlock.id}" title="${escapeHtml(fullTitle)}">↓ PIN: ${escapeHtml(shortTitle)}</div>`;
+      }
+
+      const dayCol = weekColStart + d*2; // G5 column for this day
+
+      const dayHdr = document.createElement('div');
+      dayHdr.className = 'hdr day';
+      dayHdr.dataset.week = week;
+      dayHdr.dataset.day = d;
+      dayHdr.style.gridRow = '2';
+      dayHdr.style.gridColumn = `${dayCol} / ${dayCol + 2}`;
+      dayHdr.innerHTML = `${DAY_LABELS[d]} <span class="day-dates">${dateStr}</span>${pinLine}`;
+      if (pinBlock) {
+        dayHdr.addEventListener('click', (e) => {
+          const pl = e.target.closest('.pin-label');
+          if (pl) { e.stopPropagation(); selectPin(pl.dataset.pinId); }
+        });
+      }
+      cal.appendChild(dayHdr);
+
+      // G5 / G6 subheaders
+      const g5h = document.createElement('div');
+      g5h.className = 'hdr grade';
+      g5h.dataset.week = week;
+      g5h.dataset.day = d;
+      g5h.dataset.grade = 'G5';
+      g5h.style.gridRow = '3';
+      g5h.style.gridColumn = `${dayCol}`;
+      g5h.textContent = 'G5';
+      cal.appendChild(g5h);
+
+      const g6h = document.createElement('div');
+      g6h.className = 'hdr grade';
+      g6h.dataset.week = week;
+      g6h.dataset.day = d;
+      g6h.dataset.grade = 'G6';
+      g6h.style.gridRow = '3';
+      g6h.style.gridColumn = `${dayCol + 1}`;
+      g6h.textContent = 'G6';
+      cal.appendChild(g6h);
+    }
+
+    // Grade columns (10 per week)
+    for (let d = 0; d < 5; d++) {
+      for (let g = 0; g < 2; g++) {
+        const col = document.createElement('div');
+        col.className = 'grade-col';
+        col.style.gridRow = `4 / ${4 + SLOTS_PER_DAY}`;
+        col.style.gridColumn = `${weekColStart + d*2 + g}`;
+        col.dataset.week = week;
+        col.dataset.day = d;
+        col.dataset.grade = g === 0 ? 'G5' : 'G6';
+        for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
+          const min = DAY_START_MIN + slot * SLOT_MIN;
+          const isMajor = min % 60 === 0;
+          const isHalf = !isMajor && (min % 30 === 0);
+          const s = document.createElement('div');
+          s.className = 'slot' + (isMajor ? ' major' : (isHalf ? ' half' : ''));
+          col.appendChild(s);
+        }
+        cal.appendChild(col);
+      }
+    }
+  });
+
+  // Time column (single, on the left) — row 4 onwards
+  const tcol = document.createElement('div');
+  tcol.className = 'time-col';
+  tcol.style.gridRow = `4 / ${4 + SLOTS_PER_DAY}`;
+  tcol.style.gridColumn = '1';
+  for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
+    const min = DAY_START_MIN + slot * SLOT_MIN;
+    const hh = 9 + Math.floor(min / 60);
+    const mm = min % 60;
+    const isMajor = mm === 0;
+    const isHalf = mm === 30;
+    const label = isMajor ? `${hh > 12 ? hh-12 : hh}:00 ${hh >= 12 ? 'PM' : 'AM'}`
+                : isHalf ? `:30` : '';
+    const tick = document.createElement('div');
+    tick.className = 'time-tick' + (isMajor ? ' major' : isHalf ? ' half' : '');
+    tick.textContent = label;
+    tcol.appendChild(tick);
+  }
+  cal.appendChild(tcol);
+
+  // Blocks for the weeks in view
+  const warnings = computeWarnings();
+  const warnByBlock = {};
+  for (const w of warnings) for (const bid of w.block_ids) { warnByBlock[bid] = (warnByBlock[bid] || []).concat(w); }
+
+  const weekSet = new Set(weeksToRender);
+  for (const b of state.blocks) {
+    if (!weekSet.has(b.w)) continue;
+    renderBlock(b, warnByBlock[b.id]);
+  }
+}
+
+function renderBlock(b, warns) {
+  const el = document.createElement('div');
+  el.className = `block t-${b.tp}`;
+  if (b.anc) el.classList.add('anchor');
+  if (b.pin) el.classList.add('pin');
+  if (warns && warns.length) el.classList.add('violated');
+  el.dataset.id = b.id;
+
+  // Vertical sizing is slot-based and doesn't depend on column measurements.
+  // Horizontal position (left/width) is assigned later in positionBlocksAfterMount()
+  // from runtime-measured column edges, so we no longer guess pixel math here.
+  const startSlot = Math.max(0, (b.s - DAY_START_MIN) / SLOT_MIN);
+  const slots = Math.max(1, b.dur / SLOT_MIN);
+  el.dataset.startSlot = startSlot;
+  el.dataset.slots = slots;
+  el.dataset.week = b.w;
+  el.dataset.day = b.d;
+  el.dataset.grade = b.g;
+
+  el.style.height = (slots * SLOT_PX) + 'px';
+  el.style.visibility = 'hidden'; // revealed in positionBlocksAfterMount once measured
+  // left, width, top → computed in positionBlocksAfterMount()
+
+  // Content
+  const meta = `${formatTime(b.s)}–${formatTime(b.s + b.dur)} · ${b.g} · ${b.dur}m`;
+  el.innerHTML = `
+    <div class="ttl">${escapeHtml(b.ttl)}${b.guide ? `<span class="guide-badge guide-${b.guide}">${b.guide}</span>` : ''}</div>
+    <div class="meta">${meta}</div>
+    ${b.std && b.std.length ? `<div class="std">${escapeHtml(b.std.join(', '))}</div>` : ''}
+  `;
+
+  if (!b.anc) {
+    attachDrag(el, b);
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openGuideMenu(e, b);
+    });
+  } else {
+    // Anchor blocks can't drag, but should still be selectable.
+    el.addEventListener('click', (e) => {
+      if (e.button !== 0) return;
+      selectBlock(b.id);
+    });
+  }
+
+  if (warns && warns.length) {
+    el.title = warns.map(w => `[${w.kind.toUpperCase()}] ${w.msg}`).join('\n');
+  }
+
+  cal.appendChild(el);
+}
+
+// ============================================================
+// RUNTIME COLUMN MEASUREMENT
+// ============================================================
+// We measure each grade column's actual left/right in pixels (relative to
+// cal's content box) instead of trusting 54 + d*140 math. This is what
+// finally kills the Tue→Wed block bleed.
+//
+// Shape: columnMetrics[week][day] = { G5: {left,right}, G6: {left,right} }
+// In single-week mode only one week key is populated. In full-challenge
+// mode all 8 weeks are populated.
+let columnMetrics = {};
+let weeksRendered = [];    // ordered list of weeks currently in the DOM
+let headerHeight = 40;
+
+function measureColumns() {
+  const calRect = cal.getBoundingClientRect();
+  const metrics = {};
+  const seenWeeks = new Set();
+  for (const el of cal.querySelectorAll('.grade-col')) {
+    const w = parseInt(el.dataset.week, 10);
+    const d = parseInt(el.dataset.day, 10);
+    const g = el.dataset.grade;
+    seenWeeks.add(w);
+    if (!metrics[w]) metrics[w] = {};
+    if (!metrics[w][d]) metrics[w][d] = { G5: null, G6: null };
+    const r = el.getBoundingClientRect();
+    metrics[w][d][g] = { left: r.left - calRect.left, right: r.right - calRect.left };
+  }
+  columnMetrics = metrics;
+  weeksRendered = [...seenWeeks].sort((a, b) => a - b);
+
+  const tc = cal.querySelector('.hdr.time-corner');
+  headerHeight = tc ? tc.getBoundingClientRect().height : 40;
+}
+
+// Compute a block's target {left, width} from measured column edges.
+// Applies the DAY_INSET/GRADE_INSET margins AND a hard right-edge clamp that
+// guarantees the block never reaches within 6px of the next day's column.
+function blockBounds(b) {
+  const weekMetrics = columnMetrics[b.w];
+  if (!weekMetrics) return null;
+  const m = weekMetrics[b.d];
+  if (!m || !m.G5 || !m.G6) return null;
+
+  const DAY_INSET   = 4;  // px inset at a day boundary
+  const GRADE_INSET = 2;  // px inset at the within-day G5/G6 boundary
+
+  let colLeft, colRight, leftAtDayBoundary, rightAtDayBoundary;
+  if (b.g === 'G5') {
+    colLeft = m.G5.left;  colRight = m.G5.right;
+    leftAtDayBoundary = true;  rightAtDayBoundary = false;
+  } else if (b.g === 'G6') {
+    colLeft = m.G6.left;  colRight = m.G6.right;
+    leftAtDayBoundary = false; rightAtDayBoundary = true;
+  } else {
+    colLeft = m.G5.left;  colRight = m.G6.right;
+    leftAtDayBoundary = true;  rightAtDayBoundary = true;
+  }
+
+  const leftInset  = leftAtDayBoundary  ? DAY_INSET : GRADE_INSET;
+  const rightInset = rightAtDayBoundary ? DAY_INSET : GRADE_INSET;
+
+  let left  = colLeft + leftInset;
+  let right = colRight - rightInset;
+
+  // Hard safety clamp: right edge must sit at least 6px before the next
+  // rendered day's G5 left edge. The "next day" lives in the same week if
+  // b.d < 4, otherwise in the next rendered week's day 0 (only relevant in
+  // full-challenge mode).
+  let nextG5 = null;
+  if (b.d < 4 && weekMetrics[b.d + 1]) {
+    nextG5 = weekMetrics[b.d + 1].G5;
+  } else if (b.d === 4) {
+    const nextWeek = columnMetrics[b.w + 1];
+    if (nextWeek && nextWeek[0]) nextG5 = nextWeek[0].G5;
+  }
+  if (nextG5) {
+    const guard = nextG5.left - 6;
+    if (right > guard) {
+      console.warn(`[clamp] Block ${b.id} "${b.ttl}" would cross the Wk${b.w} day ${b.d} boundary — clamping right edge from ${right.toFixed(1)}px to ${guard.toFixed(1)}px.`);
+      right = guard;
+    }
+  }
+
+  return { left, width: Math.max(20, right - left) };
+}
+
+function drawDaySeparators() {
+  for (const old of cal.querySelectorAll('.day-sep')) old.remove();
+  if (!weeksRendered.length) return;
+
+  // For each rendered week, draw bars between day 0|1, 1|2, 2|3, 3|4 (thin)
+  // AND a thicker bar between Fri of week N and Mon of week N+1 (week boundary).
+  for (const w of weeksRendered) {
+    const m = columnMetrics[w];
+    if (!m) continue;
+    for (let d = 1; d < 5; d++) {
+      const nextG5 = m[d] && m[d].G5;
+      if (!nextG5) continue;
+      const bar = document.createElement('div');
+      bar.className = 'day-sep';
+      bar.style.left = (nextG5.left - 1.5) + 'px';
+      cal.appendChild(bar);
+    }
+  }
+  // Week-boundary bars (only exist when fullChallenge mode has multiple weeks)
+  for (let i = 0; i < weeksRendered.length - 1; i++) {
+    const nextWeek = weeksRendered[i + 1];
+    const nextWeekM = columnMetrics[nextWeek];
+    if (!nextWeekM || !nextWeekM[0] || !nextWeekM[0].G5) continue;
+    const bar = document.createElement('div');
+    bar.className = 'day-sep week-sep';
+    bar.style.left = (nextWeekM[0].G5.left - 2.5) + 'px';
+    cal.appendChild(bar);
+  }
+}
+
+// Build the sets that drive lineage outline rings: which block is selected,
+// which tags are its prereqs, which are its dependents, plus (if a pin is
+// selected) which concept_tags feed into it. Shared by Grid and Arc.
+function computeLineageSets() {
+  const selBlock = state.selectedBlockId ? state.blocks.find(x => x.id === state.selectedBlockId) : null;
+  const selPin   = state.selectedPinId   ? state.blocks.find(x => x.id === state.selectedPinId)   : null;
+  const selTag = selBlock && selBlock.tag;
+  const prereqTagSet = new Set(selTag && PREREQS[selTag] ? PREREQS[selTag] : []);
+  const dependentTagSet = new Set();
+  if (selTag) {
+    for (const [childTag, parents] of Object.entries(PREREQS)) {
+      if (parents.includes(selTag)) dependentTagSet.add(childTag);
+    }
+  }
+  const pinServiceTagSet = new Set();
+  if (selPin && selPin.tag) {
+    for (const [conceptTag, pinTag] of Object.entries(PIN_SERVICE)) {
+      if (pinTag === selPin.tag) pinServiceTagSet.add(conceptTag);
+    }
+  }
+  return { selBlock, selPin, prereqTagSet, dependentTagSet, pinServiceTagSet };
+}
+
+function positionBlocksAfterMount() {
+  measureColumns();
+  const filter = state.guideFilter || 'all';
+  const { selBlock, selPin, prereqTagSet, dependentTagSet, pinServiceTagSet } = computeLineageSets();
+
+  for (const el of cal.querySelectorAll('.block')) {
+    const id = el.dataset.id;
+    const b = state.blocks.find(x => x.id === id);
+    if (!b) continue;
+
+    const bounds = blockBounds(b);
+    if (bounds) {
+      el.style.left  = bounds.left  + 'px';
+      el.style.width = bounds.width + 'px';
+    }
+    const startSlot = parseInt(el.dataset.startSlot, 10);
+    el.style.top = (headerHeight + startSlot * SLOT_PX) + 'px';
+    el.style.visibility = 'visible';
+
+    // Guide filter in grid view: dim non-matching, highlight matching.
+    el.classList.remove('dimmed', 'filter-match');
+    if (filter !== 'all') {
+      const match = (filter === 'unassigned') ? !b.guide : b.guide === filter;
+      if (match) el.classList.add('filter-match');
+      else el.classList.add('dimmed');
+    }
+
+    // Lineage outline rings (additive, quiet).
+    el.classList.remove('ring-selected', 'ring-prereq', 'ring-dependent');
+    if (selBlock) {
+      if (b.id === selBlock.id) el.classList.add('ring-selected');
+      else if (b.tag && prereqTagSet.has(b.tag))    el.classList.add('ring-prereq');
+      else if (b.tag && dependentTagSet.has(b.tag)) el.classList.add('ring-dependent');
+    } else if (selPin) {
+      if (b.id === selPin.id) el.classList.add('ring-selected');
+      else if (b.tag && pinServiceTagSet.has(b.tag)) el.classList.add('ring-prereq');
+    }
+  }
+  drawDaySeparators();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function formatTime(min) {
+  const h24 = 9 + Math.floor(min / 60);
+  const m = min % 60;
+  const ap = h24 >= 12 ? 'PM' : 'AM';
+  let h = h24 > 12 ? h24 - 12 : h24;
+  if (h === 0) h = 12;
+  return `${h}:${m.toString().padStart(2,'0')} ${ap}`;
+}
+
+// ============================================================
+// UNDO / REDO
+// ============================================================
+// Action records, not state snapshots. Each entry stores only the
+// block id and before/after values for the changed fields.
+//   { type: 'move',   blockId, before: {w,d,g,s}, after: {w,d,g,s} }
+//   { type: 'assign', blockId, before: <guide|null>, after: <guide|null> }
+// Stacks are transient — never persisted. Reload = clean slate.
+const UNDO_CAP = 50;
+let undoStack = [];
+let redoStack = [];
+
+function pushUndo(action) {
+  undoStack.push(action);
+  if (undoStack.length > UNDO_CAP) undoStack.shift();
+  redoStack = [];  // any new action invalidates the redo branch
+}
+
+function applyAction(action, direction) {
+  const b = state.blocks.find(x => x.id === action.blockId);
+  if (!b) return;
+  const target = direction === 'undo' ? action.before : action.after;
+  if (action.type === 'move') {
+    b.w = target.w; b.d = target.d; b.g = target.g; b.s = target.s;
+  } else if (action.type === 'assign') {
+    b.guide = target;
+  }
+}
+
+function undo() {
+  const action = undoStack.pop();
+  if (!action) return;
+  applyAction(action, 'undo');
+  redoStack.push(action);
+  saveState();
+  render();
+}
+
+function redo() {
+  const action = redoStack.pop();
+  if (!action) return;
+  applyAction(action, 'redo');
+  undoStack.push(action);
+  saveState();
+  render();
+}
+
+// ============================================================
+// DRAG
+// ============================================================
+let dragState = null;
+
+// Edge-scroll: when dragging in Full challenge mode, auto-pan cal-wrap
+// when the pointer enters a band near the viewport edge so blocks can
+// be dragged across all 8 weeks. Math is mode-agnostic — in single-week
+// mode, scrollWidth ≈ clientWidth, so the clamps yield zero deltas and
+// nothing scrolls.
+const EDGE_ZONE = 60;        // px from viewport edge that triggers scroll
+const MAX_EDGE_SCROLL = 18;  // px per frame at the very edge (~1080 px/sec @ 60fps)
+let edgeScrollRaf = null;
+let lastPointerEvent = null;
+
+function computeEdgeScrollDeltas(e) {
+  const r = calWrap.getBoundingClientRect();
+  const px = e.clientX, py = e.clientY;
+
+  const dLeft   = px - r.left;
+  const dRight  = r.right - px;
+  const dTop    = py - r.top;
+  const dBottom = r.bottom - py;
+
+  let dx = 0, dy = 0;
+
+  if (dLeft >= 0 && dLeft < EDGE_ZONE) {
+    const depth = (EDGE_ZONE - dLeft) / EDGE_ZONE;
+    dx = -depth * MAX_EDGE_SCROLL;
+  } else if (dRight >= 0 && dRight < EDGE_ZONE) {
+    const depth = (EDGE_ZONE - dRight) / EDGE_ZONE;
+    dx = depth * MAX_EDGE_SCROLL;
+  }
+
+  if (dTop >= 0 && dTop < EDGE_ZONE) {
+    const depth = (EDGE_ZONE - dTop) / EDGE_ZONE;
+    dy = -depth * MAX_EDGE_SCROLL;
+  } else if (dBottom >= 0 && dBottom < EDGE_ZONE) {
+    const depth = (EDGE_ZONE - dBottom) / EDGE_ZONE;
+    dy = depth * MAX_EDGE_SCROLL;
+  }
+
+  // Clamp to actual scroll range so we don't overshoot.
+  if (dx < 0) dx = Math.max(dx, -calWrap.scrollLeft);
+  if (dx > 0) dx = Math.min(dx, calWrap.scrollWidth - calWrap.clientWidth - calWrap.scrollLeft);
+  if (dy < 0) dy = Math.max(dy, -calWrap.scrollTop);
+  if (dy > 0) dy = Math.min(dy, calWrap.scrollHeight - calWrap.clientHeight - calWrap.scrollTop);
+
+  return { dx, dy };
+}
+
+function scheduleEdgeScroll() {
+  if (edgeScrollRaf) return;
+  if (!dragState || !lastPointerEvent) return;
+  const { dx, dy } = computeEdgeScrollDeltas(lastPointerEvent);
+  if (dx === 0 && dy === 0) return;
+  edgeScrollRaf = requestAnimationFrame(edgeScrollTick);
+}
+
+function edgeScrollTick() {
+  edgeScrollRaf = null;
+  if (!dragState || !lastPointerEvent) return;
+  const { dx, dy } = computeEdgeScrollDeltas(lastPointerEvent);
+  if (dx === 0 && dy === 0) return;  // out of edge zone or fully scrolled — stop the loop
+  calWrap.scrollLeft += dx;
+  calWrap.scrollTop  += dy;
+  // Re-snap: viewport shifted, so the column under the (stationary) pointer
+  // changed. Recompute proposedWeek/Day/Grade/StartMin and reposition the
+  // ghost. The ghost's left/top are cal-relative pixels and scroll with cal
+  // automatically — only the snap target needs recomputation.
+  updateDragGhost(lastPointerEvent);
+  scheduleEdgeScroll();  // tail-call for next frame
+}
+
+function attachDrag(el, b) {
+  const MOVE_THRESHOLD = 4; // px — below this, pointerup is a click, not a drag
+  let startClientX = 0, startClientY = 0;
+  let armed = false;
+  let moved = false;
+
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;     // left button only
+    if (e.target.tagName === 'BUTTON') return;
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    startClientX = e.clientX;
+    startClientY = e.clientY;
+    armed = true;
+    moved = false;
+    const rect = el.getBoundingClientRect();
+    dragState = {
+      id: b.id, el, block: b,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      startDay: b.d, startGrade: b.g, startMin: b.s,
+      pointerId: e.pointerId,
+    };
+    // 'dragging' class and ghost are deferred until the pointer actually moves.
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!dragState || dragState.id !== b.id || !armed) return;
+    if (!moved) {
+      const dx = e.clientX - startClientX;
+      const dy = e.clientY - startClientY;
+      if (Math.hypot(dx, dy) < MOVE_THRESHOLD) return;
+      // Crossed threshold — begin real drag.
+      moved = true;
+      el.classList.add('dragging');
+      const ghost = document.createElement('div');
+      ghost.className = 'drop-ghost';
+      ghost.style.width = el.style.width;
+      ghost.style.height = el.style.height;
+      ghost.style.left = el.style.left;
+      ghost.style.top = el.style.top;
+      cal.appendChild(ghost);
+      dragState.ghost = ghost;
+    }
+    updateDragGhost(e);
+    lastPointerEvent = e;
+    scheduleEdgeScroll();
+  });
+
+  el.addEventListener('pointerup', (e) => {
+    if (!dragState || dragState.id !== b.id || !armed) return;
+    armed = false;
+    if (!moved) {
+      // No movement — treat as click.
+      try { el.releasePointerCapture(dragState.pointerId); } catch(_) {}
+      lastPointerEvent = null;
+      dragState = null;
+      selectBlock(b.id);
+      return;
+    }
+    finishDrag(e);
+  });
+
+  el.addEventListener('pointercancel', (e) => {
+    if (!dragState || dragState.id !== b.id) return;
+    armed = false;
+    if (edgeScrollRaf) { cancelAnimationFrame(edgeScrollRaf); edgeScrollRaf = null; }
+    lastPointerEvent = null;
+    cancelDrag();
+  });
+}
+
+function updateDragGhost(e) {
+  if (!dragState) return;
+  if (!Object.keys(columnMetrics).length) measureColumns();
+  if (!Object.keys(columnMetrics).length) return;
+
+  const calRect = cal.getBoundingClientRect();
+  const pointerX = e.clientX - calRect.left;
+  const pointerY = e.clientY - calRect.top;
+
+  const widthCols = dragState.block.g === 'G5+G6' ? 2 : 1;
+  const targetX = pointerX - dragState.offsetX;
+
+  // Snap to nearest column by left-edge distance across all rendered weeks.
+  let best = null, bestDist = Infinity;
+  for (const w of weeksRendered) {
+    const weekM = columnMetrics[w];
+    if (!weekM) continue;
+    for (let d = 0; d < 5; d++) {
+      const m = weekM[d];
+      if (!m) continue;
+      for (const g of ['G5', 'G6']) {
+        if (!m[g]) continue;
+        const dist = Math.abs(m[g].left - targetX);
+        if (dist < bestDist) { bestDist = dist; best = { week: w, day: d, grade: g }; }
+      }
+    }
+  }
+  if (!best) return;
+
+  const week = best.week;
+  const day = best.day;
+  let grade;
+  if (widthCols === 2) {
+    grade = 'G5+G6'; // always snap to start of day
+  } else {
+    grade = best.grade;
+  }
+
+  const virtualBlock = { ...dragState.block, w: week, d: day, g: grade };
+  const bounds = blockBounds(virtualBlock);
+  if (!bounds) return;
+
+  // Y → slot
+  const yInGrid = pointerY - dragState.offsetY - headerHeight;
+  let startSlot = Math.round(yInGrid / SLOT_PX);
+  const slots = dragState.block.dur / SLOT_MIN;
+  if (startSlot < 0) startSlot = 0;
+  if (startSlot + slots > SLOTS_PER_DAY) startSlot = SLOTS_PER_DAY - slots;
+  const newStartMin = startSlot * SLOT_MIN;
+
+  const collision = checkCollision(dragState.block, day, grade, newStartMin, week);
+
+  dragState.ghost.style.left = bounds.left + 'px';
+  dragState.ghost.style.top  = (headerHeight + startSlot * SLOT_PX) + 'px';
+  dragState.ghost.style.width = bounds.width + 'px';
+  dragState.ghost.style.borderColor = collision ? 'var(--warn)' : 'var(--accent)';
+  dragState.ghost.style.background  = collision ? 'rgba(178,31,31,0.2)' : 'rgba(194,79,29,0.15)';
+
+  dragState.proposedWeek = week;
+  dragState.proposedDay = day;
+  dragState.proposedGrade = grade;
+  dragState.proposedStartMin = newStartMin;
+  dragState.proposedCollision = collision;
+}
+
+function checkCollision(block, newDay, newGrade, newStartMin, newWeek) {
+  if (newWeek === undefined) newWeek = state.currentWeek;
+  const newEndMin = newStartMin + block.dur;
+  for (const o of state.blocks) {
+    if (o.id === block.id) continue;
+    if (o.w !== newWeek) continue;
+    if (o.d !== newDay) continue;
+    // Grade overlap?
+    const gradesOverlap = (g1, g2) => {
+      if (g1 === g2) return true;
+      if (g1 === 'G5+G6' || g2 === 'G5+G6') return true;
+      return false;
+    };
+    if (!gradesOverlap(o.g, newGrade)) continue;
+    // Time overlap?
+    const oEnd = o.s + o.dur;
+    if (newStartMin < oEnd && newEndMin > o.s) return o;
+  }
+  return null;
+}
+
+function finishDrag(e) {
+  if (edgeScrollRaf) { cancelAnimationFrame(edgeScrollRaf); edgeScrollRaf = null; }
+  lastPointerEvent = null;
+  const el = dragState.el;
+  el.classList.remove('dragging');
+  try { el.releasePointerCapture(dragState.pointerId); } catch(_) {}
+  if (dragState.ghost) dragState.ghost.remove();
+
+  if (dragState.proposedDay !== undefined && !dragState.proposedCollision) {
+    // Commit move
+    const b = state.blocks.find(x => x.id === dragState.id);
+    if (b) {
+      const before = { w: b.w, d: b.d, g: b.g, s: b.s };
+      if (dragState.proposedWeek !== undefined) b.w = dragState.proposedWeek;
+      b.d = dragState.proposedDay;
+      b.g = dragState.proposedGrade;
+      b.s = dragState.proposedStartMin;
+      const after = { w: b.w, d: b.d, g: b.g, s: b.s };
+      // Only record if the commit actually changed something. Same-slot
+      // drops should never reach here (finishDrag's branch) but defensive.
+      const changed = before.w !== after.w || before.d !== after.d
+                   || before.g !== after.g || before.s !== after.s;
+      if (changed) pushUndo({ type: 'move', blockId: b.id, before, after });
+      saveState();
+    }
+  }
+  dragState = null;
+  render();
+}
+
+function cancelDrag() {
+  if (edgeScrollRaf) { cancelAnimationFrame(edgeScrollRaf); edgeScrollRaf = null; }
+  lastPointerEvent = null;
+  if (!dragState) return;
+  if (dragState.ghost) dragState.ghost.remove();
+  dragState.el.classList.remove('dragging');
+  dragState = null;
+}
+
+// ============================================================
+// GUIDE ASSIGNMENT (right-click)
+// ============================================================
+let guideMenu = null;
+function openGuideMenu(e, b) {
+  closeGuideMenu();
+  const menu = document.createElement('div');
+  menu.className = 'guide-pick-menu';
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+  const guides = [
+    {code: 'K', name: 'Kevin'},
+    {code: 'J', name: 'John'},
+    {code: 'A', name: 'Anand'},
+    {code: 'X', name: 'Other'},
+    {code: null, name: '(Unassigned)'},
+  ];
+  for (const g of guides) {
+    const btn = document.createElement('button');
+    btn.textContent = g.code ? `${g.code} · ${g.name}` : g.name;
+    btn.onclick = () => {
+      const before = b.guide ?? null;
+      const after = g.code;
+      if (before !== after) {
+        b.guide = after;
+        pushUndo({ type: 'assign', blockId: b.id, before, after });
+        saveState();
+      }
+      closeGuideMenu();
+      render();
+    };
+    menu.appendChild(btn);
+  }
+  document.body.appendChild(menu);
+  guideMenu = menu;
+  setTimeout(() => document.addEventListener('click', closeGuideMenu, {once: true}), 10);
+}
+function closeGuideMenu() {
+  if (guideMenu) { guideMenu.remove(); guideMenu = null; }
+}
+
+// ============================================================
+// WARNINGS
+// ============================================================
+// Returns [{kind, msg, block_ids}]
+function computeWarnings() {
+  const warns = [];
+  // Build lookup: concept_tag -> list of blocks
+  const byTag = {};
+  for (const b of state.blocks) {
+    if (b.tag) (byTag[b.tag] = byTag[b.tag] || []).push(b);
+  }
+
+  function absMin(b) {
+    // Minutes since start of Week 1 Mon 9:00 AM
+    return ((b.w - 1) * 7 + b.d) * 24 * 60 + b.s;
+  }
+
+  // 1. Prereq violations
+  for (const b of state.blocks) {
+    if (!b.tag || !PREREQS[b.tag]) continue;
+    const prereqTags = PREREQS[b.tag];
+    for (const pt of prereqTags) {
+      const pBlocks = byTag[pt];
+      if (!pBlocks || !pBlocks.length) {
+        warns.push({
+          kind: 'prereq', severity: 'missing',
+          msg: `"${b.ttl}" needs prereq [${pt}] but no matching block exists.`,
+          block_ids: [b.id],
+        });
+        continue;
+      }
+      // Find earliest prereq placement
+      const earliestPrereq = pBlocks.reduce((m, x) => absMin(x) < absMin(m) ? x : m, pBlocks[0]);
+      if (absMin(earliestPrereq) >= absMin(b)) {
+        warns.push({
+          kind: 'prereq',
+          msg: `"${b.ttl}" is before its prereq "${earliestPrereq.ttl}" — ${describeWhen(b)} comes before ${describeWhen(earliestPrereq)}.`,
+          block_ids: [b.id, earliestPrereq.id],
+        });
+      }
+    }
+  }
+
+  // 2. Pin proximity
+  for (const b of state.blocks) {
+    if (!b.tag || !PIN_SERVICE[b.tag]) continue;
+    const pinTag = PIN_SERVICE[b.tag];
+    const pinBlocks = byTag[pinTag];
+    if (!pinBlocks || !pinBlocks.length) continue;
+    const earliestPin = pinBlocks.reduce((m, x) => absMin(x) < absMin(m) ? x : m, pinBlocks[0]);
+    const dayDelta = ((earliestPin.w - b.w) * 7 + (earliestPin.d - b.d));
+    if (dayDelta < 0) {
+      // block is after its pin — that's also bad
+      warns.push({
+        kind: 'proximity',
+        msg: `"${b.ttl}" is AFTER its pin "${earliestPin.ttl}" by ${-dayDelta} day(s). Students need it before authentic use.`,
+        block_ids: [b.id, earliestPin.id],
+      });
+    } else if (dayDelta > PIN_PROXIMITY_DAYS) {
+      warns.push({
+        kind: 'proximity',
+        msg: `"${b.ttl}" is ${dayDelta} days before its pin "${earliestPin.ttl}". Risk: felt need will fade before use.`,
+        block_ids: [b.id, earliestPin.id],
+      });
+    }
+  }
+
+  // 3. Guide overbooking (same guide, overlapping time, same day across weeks)
+  const byGuideDay = {};
+  for (const b of state.blocks) {
+    if (!b.guide) continue;
+    const key = `${b.guide}|${b.w}|${b.d}`;
+    (byGuideDay[key] = byGuideDay[key] || []).push(b);
+  }
+  for (const key of Object.keys(byGuideDay)) {
+    const list = byGuideDay[key];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i+1; j < list.length; j++) {
+        const a = list[i], c = list[j];
+        const aEnd = a.s + a.dur;
+        const cEnd = c.s + c.dur;
+        if (a.s < cEnd && aEnd > c.s) {
+          warns.push({
+            kind: 'guide',
+            msg: `Guide ${a.guide} is booked simultaneously: "${a.ttl}" and "${c.ttl}" on ${describeDay(a)}.`,
+            block_ids: [a.id, c.id],
+          });
+        }
+      }
+    }
+  }
+
+  return warns;
+}
+
+function describeWhen(b) {
+  return `Wk ${b.w} ${DAY_LABELS[b.d]} ${formatTime(b.s)}`;
+}
+function describeDay(b) {
+  return `Wk ${b.w} ${DAY_LABELS[b.d]}`;
+}
+
+function computeWarningsByWeek() {
+  const out = {};
+  const warns = computeWarnings();
+  for (const w of warns) {
+    // Attribute each warning to the earliest-involved week
+    let minW = 99;
+    for (const id of w.block_ids) {
+      const b = state.blocks.find(x => x.id === id);
+      if (b && b.w < minW) minW = b.w;
+    }
+    if (minW < 99) out[minW] = (out[minW] || 0) + 1;
+  }
+  return out;
+}
+
+function renderWarnSummary() {
+  const warns = computeWarnings();
+  document.getElementById('warncount').textContent = warns.length;
+  const summary = document.getElementById('warn-summary');
+  const counts = { prereq: 0, proximity: 0, guide: 0 };
+  for (const w of warns) counts[w.kind]++;
+  summary.innerHTML = `
+    <div class="row"><span>Prerequisite violations</span><span class="n">${counts.prereq}</span></div>
+    <div class="row"><span>Pin-proximity flags</span><span class="n">${counts.proximity}</span></div>
+    <div class="row"><span>Guide overbookings</span><span class="n">${counts.guide}</span></div>
+  `;
+}
+
+function renderWarningsList() {
+  const warns = computeWarnings();
+  const list = document.getElementById('warn-list');
+  list.innerHTML = '';
+  if (!warns.length) {
+    list.innerHTML = '<div class="warn-item"><div class="title">No warnings.</div><div class="detail">Either everything checks out, or you haven\'t assigned guides yet (guide warnings only fire on assignments).</div></div>';
+  }
+  // Sort: prereq first, then proximity, then guide; then by earliest involved week
+  warns.sort((a,b) => {
+    const kindOrd = {prereq:0, proximity:1, guide:2};
+    if (kindOrd[a.kind] !== kindOrd[b.kind]) return kindOrd[a.kind] - kindOrd[b.kind];
+    const minW = w => Math.min(...w.block_ids.map(id => state.blocks.find(x=>x.id===id)?.w ?? 99));
+    return minW(a) - minW(b);
+  });
+  for (const w of warns) {
+    const div = document.createElement('div');
+    div.className = 'warn-item';
+    const tagText = { prereq: 'PREREQ', proximity: 'PROXIMITY', guide: 'GUIDE' }[w.kind];
+    div.innerHTML = `
+      <span class="tag ${w.kind}">${tagText}</span>
+      <div class="title">${escapeHtml(w.msg)}</div>
+    `;
+    div.onclick = () => focusFirstBlock(w.block_ids[0]);
+    list.appendChild(div);
+  }
+}
+
+// Backward-compat wrapper so any other caller that expects renderWarnings still works.
+function renderWarnings() {
+  renderWarnSummary();
+  renderWarningsList();
+}
+
+// ============================================================
+// SELECTION / LINEAGE / PIN READINESS
+// ============================================================
+function selectBlock(id) {
+  state.selectedBlockId = id;
+  state.selectedPinId = null;
+  saveState();
+  render();
+}
+function selectPin(id) {
+  state.selectedPinId = id;
+  state.selectedBlockId = null;
+  saveState();
+  render();
+}
+function clearSelection() {
+  if (!state.selectedBlockId && !state.selectedPinId) return;
+  state.selectedBlockId = null;
+  state.selectedPinId = null;
+  saveState();
+  render();
+}
+
+// Absolute minute from Week 1 Mon 9:00 AM — used for chronology comparisons.
+function absMinLin(b) {
+  return ((b.w - 1) * 7 + b.d) * 24 * 60 + b.s;
+}
+
+function prereqStatusVs(prereqB, selB) {
+  // prereqB should be BEFORE selB. Use end-of-prereq vs start-of-selected.
+  const pEnd = absMinLin(prereqB) + prereqB.dur;
+  const sStart = absMinLin(selB);
+  if (pEnd <= sStart) return { glyph: '✓', tone: 'ok' };     // finishes before selected starts
+  if (absMinLin(prereqB) < sStart) return { glyph: '⚠', tone: 'warn' }; // overlapping edge
+  return { glyph: '✗', tone: 'bad' };                         // at/after selected start
+}
+
+function dependentStatusVs(depB, selB) {
+  // depB should be AFTER selB. Use start-of-dep vs end-of-selected.
+  const dStart = absMinLin(depB);
+  const sEnd = absMinLin(selB) + selB.dur;
+  if (dStart >= sEnd) return { glyph: '✓', tone: 'ok' };
+  if (dStart > absMinLin(selB)) return { glyph: '⚠', tone: 'warn' };
+  return { glyph: '✗', tone: 'bad' };
+}
+
+function gapString(earlier, later) {
+  if (earlier.w === later.w && earlier.d === later.d) return 'same day';
+  const dayDelta = ((later.w - earlier.w) * 7 + (later.d - earlier.d));
+  const abs = Math.abs(dayDelta);
+  const unit = abs === 1 ? 'day' : 'days';
+  if (dayDelta > 0) return `${dayDelta} ${unit} apart`;
+  return `${abs} ${unit} — wrong order`;
+}
+
+function lineageRow({glyph, title, placement, gap, tone, clickable, id}) {
+  const dataAttr = id ? ` data-id="${id}"` : '';
+  const cls = `lineage-row tone-${tone}${clickable ? ' clickable' : ''}`;
+  return `
+    <div class="${cls}"${dataAttr}>
+      <span class="lr-glyph">${glyph}</span>
+      <span class="lr-title">${escapeHtml(title)}</span>
+      <span class="lr-meta">${placement}${gap ? ' · ' + gap : ''}</span>
+    </div>`;
+}
+
+function renderLineagePanel() {
+  const list = document.getElementById('warn-list');
+  const b = state.blocks.find(x => x.id === state.selectedBlockId);
+  if (!b) { state.selectedBlockId = null; renderWarningsList(); return; }
+
+  let html = `
+    <div class="lineage-back"><a href="#" class="back-link">← All warnings</a></div>
+    <div class="lineage-group">
+      <div class="lineage-label">SELECTED</div>
+      <div class="lineage-selected">
+        <div class="ls-title">${escapeHtml(b.ttl)}</div>
+        <div class="ls-meta">Wk ${b.w} ${DAY_LABELS[b.d]} · ${formatTime(b.s)} · ${b.g}</div>
+      </div>
+    </div>`;
+
+  if (!b.tag) {
+    html += `
+      <div class="lineage-group"><div class="lineage-label">PREREQS (0)</div><div class="lineage-empty">— none —</div></div>
+      <div class="lineage-group"><div class="lineage-label">DEPENDENTS (0)</div><div class="lineage-empty">— none —</div></div>`;
+  } else {
+    // PREREQS: tags the selected block needs
+    const prereqTags = PREREQS[b.tag] || [];
+    html += `<div class="lineage-group"><div class="lineage-label">PREREQS (${prereqTags.length})</div>`;
+    if (!prereqTags.length) {
+      html += `<div class="lineage-empty">— none —</div>`;
+    } else {
+      for (const pt of prereqTags) {
+        const pBlocks = state.blocks.filter(x => x.tag === pt);
+        if (!pBlocks.length) {
+          html += lineageRow({glyph:'✗', title:`[${pt}]`, placement:'not placed', gap:'', tone:'bad', clickable:false});
+          continue;
+        }
+        const earliest = pBlocks.reduce((m, x) => absMinLin(x) < absMinLin(m) ? x : m, pBlocks[0]);
+        const st = prereqStatusVs(earliest, b);
+        html += lineageRow({
+          glyph: st.glyph, title: earliest.ttl,
+          placement: `Wk ${earliest.w} ${DAY_LABELS[earliest.d]}`,
+          gap: gapString(earliest, b),
+          tone: st.tone, clickable: true, id: earliest.id,
+        });
+      }
+    }
+    html += `</div>`;
+
+    // DEPENDENTS: tags that list b.tag as one of their prereqs
+    const dependentEntries = [];
+    for (const [childTag, parents] of Object.entries(PREREQS)) {
+      if (parents.includes(b.tag)) {
+        const cBlocks = state.blocks.filter(x => x.tag === childTag);
+        if (!cBlocks.length) dependentEntries.push({tag: childTag, block: null});
+        else {
+          const earliest = cBlocks.reduce((m, x) => absMinLin(x) < absMinLin(m) ? x : m, cBlocks[0]);
+          dependentEntries.push({tag: childTag, block: earliest});
+        }
+      }
+    }
+    html += `<div class="lineage-group"><div class="lineage-label">DEPENDENTS (${dependentEntries.length})</div>`;
+    if (!dependentEntries.length) {
+      html += `<div class="lineage-empty">— none —</div>`;
+    } else {
+      for (const d of dependentEntries) {
+        if (!d.block) {
+          html += lineageRow({glyph:'✗', title:`[${d.tag}]`, placement:'not placed', gap:'', tone:'bad', clickable:false});
+          continue;
+        }
+        const st = dependentStatusVs(d.block, b);
+        html += lineageRow({
+          glyph: st.glyph, title: d.block.ttl,
+          placement: `Wk ${d.block.w} ${DAY_LABELS[d.block.d]}`,
+          gap: gapString(b, d.block),
+          tone: st.tone, clickable: true, id: d.block.id,
+        });
+      }
+    }
+    html += `</div>`;
+  }
+
+  list.innerHTML = html;
+  list.querySelector('.back-link').onclick = (e) => { e.preventDefault(); clearSelection(); };
+  list.querySelectorAll('.lineage-row.clickable[data-id]').forEach(row => {
+    row.onclick = () => focusAndReroot(row.dataset.id);
+  });
+}
+
+function renderPinReadiness() {
+  const list = document.getElementById('warn-list');
+  const pinB = state.blocks.find(x => x.id === state.selectedPinId);
+  if (!pinB || !pinB.tag) { state.selectedPinId = null; renderWarningsList(); return; }
+
+  const serviceTags = [];
+  for (const [conceptTag, pinTag] of Object.entries(PIN_SERVICE)) {
+    if (pinTag === pinB.tag) serviceTags.push(conceptTag);
+  }
+
+  const pinDayNum = (pinB.w - 1) * 7 + pinB.d;
+  let readyCount = 0, flagCount = 0;
+  const rowsHtml = [];
+  for (const ct of serviceTags) {
+    const cBlocks = state.blocks.filter(x => x.tag === ct);
+    if (!cBlocks.length) {
+      rowsHtml.push(lineageRow({glyph:'✗', title:`[${ct}]`, placement:'not placed', gap:'', tone:'bad', clickable:false}));
+      flagCount++;
+      continue;
+    }
+    const earliest = cBlocks.reduce((m, x) => absMinLin(x) < absMinLin(m) ? x : m, cBlocks[0]);
+    const earlDayNum = (earliest.w - 1) * 7 + earliest.d;
+    let st;
+    if (earlDayNum < pinDayNum) { st = {glyph:'✓', tone:'ok'}; readyCount++; }
+    else if (earlDayNum === pinDayNum) { st = {glyph:'⚠', tone:'warn'}; flagCount++; }
+    else { st = {glyph:'✗', tone:'bad'}; flagCount++; }
+    rowsHtml.push(lineageRow({
+      glyph: st.glyph, title: earliest.ttl,
+      placement: `Wk ${earliest.w} ${DAY_LABELS[earliest.d]}`,
+      gap: gapString(earliest, pinB),
+      tone: st.tone, clickable: true, id: earliest.id,
+    }));
+  }
+
+  const total = serviceTags.length;
+  let html = `
+    <div class="lineage-back"><a href="#" class="back-link">← All warnings</a></div>
+    <div class="lineage-group">
+      <div class="lineage-label">PIN · Wk ${pinB.w} ${DAY_LABELS[pinB.d]}</div>
+      <div class="lineage-selected">
+        <div class="ls-title">${escapeHtml(pinB.ttl)}</div>
+        <div class="ls-meta">${formatTime(pinB.s)}</div>
+      </div>
+    </div>
+    <div class="lineage-group">
+      <div class="lineage-label">READINESS (${total} prereq${total === 1 ? '' : 's'} for this pin)</div>
+      ${total ? rowsHtml.join('') : '<div class="lineage-empty">— no mapped prereqs —</div>'}
+    </div>
+    <div class="lineage-summary">${readyCount} of ${total} ready · ${flagCount} flag${flagCount === 1 ? '' : 's'}</div>`;
+
+  list.innerHTML = html;
+  list.querySelector('.back-link').onclick = (e) => { e.preventDefault(); clearSelection(); };
+  list.querySelectorAll('.lineage-row.clickable[data-id]').forEach(row => {
+    row.onclick = () => focusAndReroot(row.dataset.id);
+  });
+}
+
+// Jump to a block in the grid, switch weeks if needed, and re-root the lineage there.
+function focusAndReroot(id) {
+  const b = state.blocks.find(x => x.id === id);
+  if (!b) return;
+  state.selectedBlockId = id;
+  state.selectedPinId = null;
+  if (b.w !== state.currentWeek) state.currentWeek = b.w;
+  saveState();
+  render();
+  setTimeout(() => {
+    const el = cal.querySelector(`[data-id="${id}"]`);
+    if (el) calWrap.scrollTo({top: el.offsetTop - 80, behavior: 'smooth'});
+  }, 60);
+}
+
+function focusFirstBlock(id) {
+  const b = state.blocks.find(x => x.id === id);
+  if (!b) return;
+  if (b.w !== state.currentWeek) {
+    state.currentWeek = b.w;
+    saveState();
+    render();
+    setTimeout(() => focusFirstBlock(id), 50);
+    return;
+  }
+  // Scroll to it and highlight
+  const el = cal.querySelector(`[data-id="${id}"]`);
+  if (el) {
+    calWrap.scrollTo({top: el.offsetTop - 80, behavior: 'smooth'});
+    el.classList.add('selected');
+    setTimeout(() => el.classList.remove('selected'), 2500);
+  }
+}
+
+function renderGuideLegend() {
+  const el = document.getElementById('guide-legend');
+  const counts = {};
+  for (const b of state.blocks) {
+    if (b.guide) counts[b.guide] = (counts[b.guide] || 0) + 1;
+  }
+  const entries = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  if (!entries.length) {
+    el.innerHTML = '<span style="color:var(--muted)">No guides assigned yet. Right-click any block to assign K, J, A, X.</span>';
+  } else {
+    el.innerHTML = entries.map(([g, n]) => `<span class="guide-badge guide-${g}">${g}</span> <span style="margin-right:10px">${n} blocks</span>`).join(' ');
+  }
+}
+
+// ============================================================
+// GUIDE SCHEDULE VIEW
+// ============================================================
+// Columns = guides (K, J, A, X, Unassigned). Rows = days of the selected week.
+// Each cell stacks that guide's blocks for that day, sorted by start time.
+// Blocks that overlap another block for the same guide on the same day get
+// flagged with a red OVERLAP tag.
+const GUIDE_ORDER = [
+  { code: 'K', label: 'Kevin',    cls: 'guide-K' },
+  { code: 'J', label: 'John',     cls: 'guide-J' },
+  { code: 'A', label: 'Anand',    cls: 'guide-A' },
+  { code: 'X', label: 'Other',    cls: 'guide-X' },
+  { code: null, label: 'Unassigned', cls: 'guide-U' },
+];
+
+function renderGuideView() {
+  const root = document.getElementById('guide-view');
+  const week = state.currentWeek;
+  const wkStart = WEEK_START_DATES[week];
+
+  // Partition this week's blocks by guide + day
+  const buckets = {}; // key `${guideKey}|${day}` → [blocks]
+  for (const b of state.blocks) {
+    if (b.w !== week) continue;
+    const gk = b.guide || '_none';
+    const key = `${gk}|${b.d}`;
+    (buckets[key] = buckets[key] || []).push(b);
+  }
+  for (const k of Object.keys(buckets)) {
+    buckets[k].sort((a, c) => a.s - c.s);
+  }
+
+  // Detect overlaps within each (guide, day) bucket
+  const overlapIds = new Set();
+  for (const k of Object.keys(buckets)) {
+    const list = buckets[k];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], c = list[j];
+        if (a.s < c.s + c.dur && a.s + a.dur > c.s) {
+          overlapIds.add(a.id);
+          overlapIds.add(c.id);
+        }
+      }
+    }
+  }
+
+  let html = `<h1>Guide schedule <span class="wk">Week ${week}${wkStart ? ' · starts ' + wkStart : ''}</span></h1>`;
+  html += `<div class="guide-grid">`;
+  // Header row: spacer + guide column headers
+  html += `<div></div>`;
+  for (const g of GUIDE_ORDER) {
+    html += `<div class="col-head ${g.cls}">${g.label}${g.code ? ' · ' + g.code : ''}</div>`;
+  }
+  // Day rows
+  for (let d = 0; d < 5; d++) {
+    html += `<div class="row-head">${DAY_LABELS[d]}</div>`;
+    for (const g of GUIDE_ORDER) {
+      const gk = g.code || '_none';
+      const list = buckets[`${gk}|${d}`] || [];
+      if (!list.length) {
+        html += `<div class="cell empty"></div>`;
+        continue;
+      }
+      html += `<div class="cell">`;
+      for (const b of list) {
+        const isOverlap = overlapIds.has(b.id);
+        html += `
+          <div class="gcard t-${b.tp}${isOverlap ? ' overlap' : ''}" data-id="${b.id}">
+            ${isOverlap ? '<span class="overlap-tag">OVERLAP</span>' : ''}
+            <div class="tm">${formatTime(b.s)}–${formatTime(b.s + b.dur)}</div>
+            <div class="tt">${escapeHtml(b.ttl)}</div>
+            <div class="gr">${b.g} · ${b.dur}m${b.pin ? ' · PIN' : ''}</div>
+          </div>`;
+      }
+      html += `</div>`;
+    }
+  }
+  html += `</div>`;
+
+  root.innerHTML = html;
+
+  // Wire up per-card interactions: right-click to change guide, left-click to
+  // jump back to grid view scrolled to this block.
+  root.querySelectorAll('.gcard').forEach(card => {
+    const id = card.dataset.id;
+    const b = state.blocks.find(x => x.id === id);
+    if (!b) return;
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openGuideMenu(e, b);
+    });
+    card.addEventListener('click', () => {
+      state.viewMode = 'grid';
+      saveState();
+      syncHeaderControls();
+      swapViewVisibility();
+      render();
+      setTimeout(() => focusFirstBlock(id), 80);
+    });
+  });
+}
+
+// ============================================================
+// HEADER CONTROLS
+// ============================================================
+function syncHeaderControls() {
+  document.querySelectorAll('#view-seg button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === state.viewMode);
+  });
+  document.querySelectorAll('#guide-seg button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.gf === (state.guideFilter || 'all'));
+  });
+}
+
+function swapViewVisibility() {
+  const calWrapEl = document.getElementById('cal-wrap');
+  const gvEl = document.getElementById('guide-view');
+  calWrapEl.style.display = (state.viewMode === 'guide') ? 'none'  : 'block';
+  gvEl.style.display      = (state.viewMode === 'guide') ? 'block' : 'none';
+}
+
+document.querySelectorAll('#view-seg button').forEach(btn => {
+  btn.onclick = () => {
+    state.viewMode = btn.dataset.view;
+    saveState();
+    syncHeaderControls();
+    swapViewVisibility();
+    render();
+  };
+});
+document.querySelectorAll('#guide-seg button').forEach(btn => {
+  btn.onclick = () => {
+    state.guideFilter = btn.dataset.gf;
+    saveState();
+    syncHeaderControls();
+    render();
+  };
+});
+
+// ============================================================
+// TOP-LEVEL RENDER
+// ============================================================
+function render() {
+  syncHeaderControls();
+  swapViewVisibility();
+  renderWeekTabs();
+  renderGuideLegend();
+  renderSidePanel();
+  if (state.viewMode === 'guide') {
+    renderGuideView();
+  } else {
+    renderCalendar();
+    // After DOM is populated, measure columns and position blocks
+    requestAnimationFrame(positionBlocksAfterMount);
+  }
+}
+
+// Dispatch warn-list content based on selection. warn-summary stays constant.
+function renderSidePanel() {
+  renderWarnSummary();
+  if (state.selectedBlockId)      renderLineagePanel();
+  else if (state.selectedPinId)   renderPinReadiness();
+  else                            renderWarningsList();
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+document.getElementById('btn-reset').onclick = () => {
+  if (!confirm('Reset to the original spreadsheet layout? This discards all moves and guide assignments.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = loadState();
+  render();
+};
+document.getElementById('btn-export').onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lunch-canvas-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+document.getElementById('btn-import').onclick = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json';
+  input.onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const txt = await f.text();
+      const parsed = JSON.parse(txt);
+      if (parsed && parsed.blocks && Array.isArray(parsed.blocks)) {
+        state = parsed;
+        saveState();
+        render();
+      } else {
+        alert('Invalid file format.');
+      }
+    } catch(err) {
+      alert('Could not read file: ' + err.message);
+    }
+  };
+  input.click();
+};
+
+// Initial render
+render();
+window.addEventListener('resize', () => {
+  if (state.viewMode === 'grid') {
+    requestAnimationFrame(positionBlocksAfterMount);
+  }
+});
+
+// Global keyboard: Escape clears selection; Cmd/Ctrl+Z undoes a block
+// move or guide assignment; Cmd/Ctrl+Shift+Z (or Ctrl+Y) redoes.
+document.addEventListener('keydown', (e) => {
+  // Defensive: don't intercept while typing in an input (none exist today
+  // but this prevents future regressions).
+  const t = e.target;
+  if (t && (['INPUT','TEXTAREA','SELECT'].includes(t.tagName) || t.isContentEditable)) return;
+
+  if (e.key === 'Escape') { clearSelection(); return; }
+
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) { e.preventDefault(); undo(); return; }
+  if (mod && (e.key === 'z' || e.key === 'Z') &&  e.shiftKey) { e.preventDefault(); redo(); return; }
+  if (mod && (e.key === 'y' || e.key === 'Y'))                { e.preventDefault(); redo(); return; }
+});
+
+// Clicking empty grid space (a .slot with no block above it) clears selection.
+// Blocks stop propagation via their own handlers, so this only fires for bare
+// slots, time ticks, and the time-corner cell.
+cal.addEventListener('click', (e) => {
+  if (e.target.closest('.block')) return;
+  if (e.target.closest('.pin-label')) return;
+  clearSelection();
+});
+</script>
+</body>
+</html>
