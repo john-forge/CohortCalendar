@@ -359,6 +359,7 @@
   /* Footer/help */
   .help { position:absolute; bottom:8px; right:360px; background: rgba(255,255,255,0.85); border:1px solid var(--line); padding:6px 10px; font-size:10.5px; color: var(--muted); border-radius:4px; display:none; }
 </style>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -413,6 +414,83 @@
 </div>
 
 <script>
+// ============================================================
+// SUPABASE REALTIME SYNC
+// ------------------------------------------------------------
+// Fill these in after creating the Supabase project + table.
+// While they're empty, the app runs local-only (localStorage).
+// ============================================================
+const SUPABASE_URL = 'https://vaqdoeckaobmsalikmpx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_UlWZDjS5Yx07Cl-reOlLAg_qOsp7DLn';   // the project's anon/public key
+const DOC_ID = 'main';          // row id in the `documents` table
+
+// A per-tab id so we can ignore realtime events that echo our own writes.
+const CLIENT_ID = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+
+const sb = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+// When true, saveState() skips pushing to Supabase. Used while we're
+// applying an inbound remote update so we don't bounce it right back.
+let _syncSuppressRemote = false;
+let _syncWriteTimer = null;
+
+function scheduleRemoteSync() {
+  if (!sb) return;
+  clearTimeout(_syncWriteTimer);
+  _syncWriteTimer = setTimeout(async () => {
+    try {
+      const { error } = await sb.from('documents').upsert({
+        id: DOC_ID,
+        data: state,
+        client_id: CLIENT_ID,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) console.warn('[sync] upsert failed', error);
+    } catch (e) { console.warn('[sync] upsert threw', e); }
+  }, 250);
+}
+
+async function initRealtimeSync() {
+  if (!sb) { console.info('[sync] Supabase not configured — local-only mode'); return; }
+  // 1) Pull whatever the shared doc currently is. If it doesn't exist
+  //    yet, seed it with our local state so the first user creates it.
+  try {
+    const { data: row, error } = await sb.from('documents')
+      .select('data, client_id').eq('id', DOC_ID).maybeSingle();
+    if (error) { console.warn('[sync] initial fetch failed', error); }
+    else if (row && row.data) {
+      // Reuse the existing migration logic in loadState() by routing
+      // the remote payload through localStorage.
+      _syncSuppressRemote = true;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(row.data)); } catch(e) {}
+      state = loadState();
+      _syncSuppressRemote = false;
+      render();
+    } else {
+      await sb.from('documents').upsert({
+        id: DOC_ID, data: state, client_id: CLIENT_ID, updated_at: new Date().toISOString(),
+      });
+    }
+  } catch (e) { console.warn('[sync] init threw', e); }
+
+  // 2) Subscribe to UPDATEs on our row. Postgres changes -> websocket.
+  sb.channel('doc-' + DOC_ID)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'documents', filter: `id=eq.${DOC_ID}` },
+      payload => {
+        const next = payload.new;
+        if (!next || next.client_id === CLIENT_ID) return; // our own echo — ignore
+        _syncSuppressRemote = true;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next.data)); } catch(e) {}
+        state = loadState();
+        _syncSuppressRemote = false;
+        render();
+      })
+    .subscribe();
+}
+
 // ============================================================
 // DATA (embedded from spreadsheet parse)
 // ============================================================
@@ -576,6 +654,7 @@ function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch(e) { console.warn('Could not save state', e); }
+  if (!_syncSuppressRemote) scheduleRemoteSync();
 }
 
 // ============================================================
@@ -2881,6 +2960,7 @@ document.getElementById('btn-add-grade').onclick = (e) => {
 
 // Initial render
 render();
+initRealtimeSync();
 window.addEventListener('resize', () => {
   if (state.viewMode === 'grid') {
     requestAnimationFrame(positionBlocksAfterMount);
