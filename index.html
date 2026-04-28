@@ -159,6 +159,15 @@
   /* Empty-cell drag-create preview rectangle. Sits above grid columns,
      non-interactive so it doesn't block subsequent pointer events. */
   .create-preview { position: absolute; background: var(--accent-soft); border: 1.5px dashed var(--accent); border-radius: 4px; pointer-events: none; z-index: 5; box-sizing: border-box; }
+  /* Inline title editor in selection panel (click-to-edit). */
+  .ls-title.editable { cursor: text; }
+  .ls-title.editable:hover { background: var(--bg); border-radius: 3px; }
+  .ls-title-input { width: 100%; font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.3; padding: 1px 4px; border: 1px solid var(--accent); border-radius: 3px; background: var(--panel); font-family: inherit; box-sizing: border-box; }
+  .ls-title-input:focus { outline: none; }
+  /* Tag editor row. */
+  .lin-tag-input { width: 100%; font-size: 11.5px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); font-family: inherit; color: var(--ink); box-sizing: border-box; }
+  .lin-tag-input:focus { outline: none; border-color: var(--accent); }
+  .lin-tag-input:disabled { background: var(--bg); color: var(--muted); cursor: not-allowed; }
 
   .lineage-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; padding: 4px 2px; font-size: 11.5px; border-radius: 3px; }
   .lineage-row.clickable { cursor: pointer; }
@@ -959,6 +968,22 @@ function renderBlock(b, warns) {
       if (e.metaKey || e.ctrlKey) toggleBlockInSelection(b.id);
       else selectBlock(b.id);
     });
+    // Right-click on a locked block prompts for the unlock code. This is a
+    // soft guard against accidental edits to anchor blocks (lunch, movement,
+    // wraps, PINs) — not security. Code is shared knowledge, not a secret.
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const code = prompt('This block is locked. Enter unlock code to edit:');
+      if (code === null) return; // cancelled
+      if (code.trim().toLowerCase() === 'forge') {
+        b.locked = false;
+        pushUndo({ type: 'lock', blockId: b.id, before: true, after: false });
+        saveState();
+        render();
+      } else {
+        alert('Wrong code. Block stays locked.');
+      }
+    });
   }
 
   if (warns && warns.length) {
@@ -1359,6 +1384,10 @@ function applyAction(action, direction) {
   } else if (action.type === 'edit-grades') {
     // before/after are full grades arrays. Replace wholesale.
     b.grades = (direction === 'undo' ? action.before : action.after).slice();
+  } else if (action.type === 'edit-title') {
+    b.ttl = direction === 'undo' ? action.before : action.after;
+  } else if (action.type === 'edit-tag') {
+    b.tag = direction === 'undo' ? action.before : action.after;
   }
 }
 
@@ -2253,12 +2282,15 @@ function renderLineagePanel() {
   const totalSelected = (state.selectedBlockIds || []).length;
   const moreNote = totalSelected > 1 ? ` <span class="ls-more">+${totalSelected - 1} more selected</span>` : '';
 
+  // Title is click-to-edit when unlocked (replaced with an input on click).
+  const titleCls = b.locked ? 'ls-title' : 'ls-title editable';
+  const titleAttrs = b.locked ? '' : ' data-act="edit-title"';
   let html = `
     <div class="lineage-back"><a href="#" class="back-link">← All warnings</a></div>
     <div class="lineage-group">
       <div class="lineage-label">SELECTED${moreNote}</div>
       <div class="lineage-selected">
-        <div class="ls-title">${escapeHtml(b.ttl)}</div>
+        <div class="${titleCls}"${titleAttrs}>${escapeHtml(b.ttl)}</div>
         <div class="ls-meta">Wk ${b.w} ${DAY_LABELS[b.d]} · ${formatTime(b.s)}</div>
       </div>
     </div>`;
@@ -2276,6 +2308,17 @@ function renderLineagePanel() {
     <div class="lineage-group" data-section="grades">
       <div class="lineage-label">GRADES</div>
       <div class="lineage-grades">${gradeChips}</div>
+    </div>`;
+
+  // TAG — the prereq-graph identifier. A block with no tag isn't part of
+  // the dependency graph at all (so PREREQS/DEPENDENTS stay empty for it).
+  // Free-form text input — typing a tag that isn't in PREREQS just means
+  // "this block has no listed prereqs", which is fine for new content.
+  const tagDis = b.locked ? ' disabled' : '';
+  html += `
+    <div class="lineage-group" data-section="tag">
+      <div class="lineage-label">TAG <span style="font-weight: normal; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 10px;">— links into prereq graph</span></div>
+      <input type="text" class="lin-tag-input" value="${escapeHtml(b.tag || '')}" placeholder="(no tag — not in graph)"${tagDis} />
     </div>`;
 
   // Description section — read mode by default. The Edit button toggles to
@@ -2385,6 +2428,64 @@ function renderLineagePanel() {
   list.querySelectorAll('.lineage-row.clickable[data-id]').forEach(row => {
     row.onclick = () => focusAndReroot(row.dataset.id);
   });
+
+  // Title click-to-edit. Click the title text to swap to a one-line input.
+  // Enter or blur saves; Escape cancels. Locked blocks have no editable
+  // class so this listener never matches.
+  const titleEl = list.querySelector('.ls-title.editable[data-act="edit-title"]');
+  if (titleEl) {
+    const enterEdit = () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'ls-title-input';
+      input.value = b.ttl;
+      titleEl.replaceWith(input);
+      input.focus();
+      // Place cursor at end (so newly-created blocks land ready to type).
+      input.setSelectionRange(input.value.length, input.value.length);
+      let cancelled = false;
+      const commit = () => {
+        if (cancelled) return;
+        const newVal = input.value.trim();
+        if (newVal && newVal !== b.ttl) {
+          pushUndo({ type: 'edit-title', blockId: b.id, before: b.ttl, after: newVal });
+          b.ttl = newVal;
+          saveState();
+        }
+        render();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter')   { e.preventDefault(); commit(); }
+        if (e.key === 'Escape')  { e.preventDefault(); cancelled = true; render(); }
+      });
+    };
+    titleEl.addEventListener('click', enterEdit);
+    // If the auto-focus flag is set (just-created block), enter edit mode now.
+    if (_autoFocusTitleAfterRender) {
+      _autoFocusTitleAfterRender = false;
+      setTimeout(enterEdit, 0);
+    }
+  }
+
+  // Tag input: free-form text, blur or Enter saves.
+  const tagInput = list.querySelector('.lin-tag-input');
+  if (tagInput && !b.locked) {
+    const commitTag = () => {
+      const newTag = tagInput.value.trim() || null;
+      if (newTag !== b.tag) {
+        pushUndo({ type: 'edit-tag', blockId: b.id, before: b.tag, after: newTag });
+        b.tag = newTag;
+        saveState();
+        render();
+      }
+    };
+    tagInput.addEventListener('blur', commitTag);
+    tagInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter')  { e.preventDefault(); tagInput.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); tagInput.value = b.tag || ''; tagInput.blur(); }
+    });
+  }
 
   // Grade chip toggles: add or remove a single grade from b.grades.
   // Refuse to leave the block grade-less. Collision-check the new grades
@@ -3133,6 +3234,10 @@ document.addEventListener('keydown', (e) => {
 // ============================================================
 let createDrag = null;
 let createPreviewEl = null;
+// When true, the next renderLineagePanel() will immediately enter title-edit
+// mode. Set right before render() in drag-create's pointerup so the flow is:
+// drag → release → cursor in title input → type name → Enter → done.
+let _autoFocusTitleAfterRender = false;
 
 function clearCreatePreview() {
   if (createPreviewEl) { createPreviewEl.remove(); createPreviewEl = null; }
@@ -3248,6 +3353,7 @@ cal.addEventListener('pointerup', (e) => {
   state.blocks.push(nb);
   state.selectedBlockIds = [nb.id];
   pushUndo({ type: 'multi-add', blocks: [JSON.parse(JSON.stringify(nb))] });
+  _autoFocusTitleAfterRender = true;
   saveState();
   render();
 });
