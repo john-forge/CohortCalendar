@@ -31,7 +31,7 @@
   ],
   "viewMode": "grid",
   "guideFilter": "all",
-  "__schema_version": "2026-04-28T16:31:44Z",
+  "__schema_version": "2026-04-28T23:04:49Z",
   "blocks": [
     {
       "s": 105,
@@ -188,28 +188,6 @@
     {
       "s": 140,
       "std": [
-        "W.2"
-      ],
-      "desc": "Cost model finalization. Lock the draft. After kitchen visit, actual prep time replaces estimated and labor figures get revised. Final number defended at panel.",
-      "d": 4,
-      "tag": "cost-model-final-78",
-      "w": 5,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Cost model finalization: lock draft",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_047",
-      "pin": false
-    },
-    {
-      "s": 140,
-      "std": [
         "W.7"
       ],
       "desc": "L31 split (3 of 3). Lock in macronutrient totals for the whole 5-day menu. Compare to the targets the team set in week 1. Any discrepancies feed directly into gap analysis.",
@@ -272,29 +250,6 @@
         "G6"
       ],
       "id": "blk_174",
-      "pin": false
-    },
-    {
-      "s": 140,
-      "std": [
-        "5.NBT.B.7",
-        "5.MD.A.1"
-      ],
-      "desc": "L22 split (1 of 2). Assemble ingredients + labor + overhead into one cost-per-student-per-meal figure for each of the five days. Spreadsheet-builds happen here. Every figure must trace back to a real source (recipe card, supplier call, chef input).",
-      "d": 1,
-      "tag": "cost-model-build-78",
-      "w": 5,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Cost model build: ingredients + labor + overhead",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_042",
       "pin": false
     },
     {
@@ -472,28 +427,6 @@
       ],
       "id": "blk_123",
       "pin": null
-    },
-    {
-      "s": 140,
-      "std": [
-        "5.MD.A.1"
-      ],
-      "desc": "L13 split (2 of 2). Unit conversion within weight \u2014 ounces \u2194 pounds. Real recipe quantities. 5/6 must be fluent here before any scaling happens. 7/8 again moves toward cross-system in a later session.",
-      "d": 3,
-      "tag": "unit-conv-weight-78",
-      "w": 3,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Unit conversion: weight",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_028",
-      "pin": false
     },
     {
       "s": 180,
@@ -958,51 +891,6 @@
       "pin": false
     },
     {
-      "s": 105,
-      "std": [
-        "5.NBT.B.7"
-      ],
-      "desc": "L21 split (2 of 2). Apply overhead to the team's own menu. Each day in the five-day menu gets an overhead line. Output: a complete cost line ready to assemble in cost-model build.",
-      "d": 4,
-      "tag": "overhead-application-78",
-      "w": 5,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Overhead application: fixed dollar figure",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_046",
-      "pin": false
-    },
-    {
-      "s": 100,
-      "std": [
-        "W.4",
-        "RI.1"
-      ],
-      "desc": "Cost model finalization. Lock the draft. After kitchen visit, actual prep time replaces estimated and labor figures get revised. Final number defended at panel.",
-      "d": 1,
-      "tag": "cost-model-final-78",
-      "w": 7,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 60,
-      "anc": false,
-      "ttl": "Kitchen debrief + cost model finalization",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_057",
-      "pin": false
-    },
-    {
       "s": 0,
       "std": [],
       "desc": "Daily anchor. Whole class movement and stand-up to start the day. Not instructional time.",
@@ -1251,28 +1139,6 @@
       "pin": null
     },
     {
-      "s": 65,
-      "std": [
-        "5.NBT.B.7"
-      ],
-      "desc": "L20 split (2 of 2) (G5). Apply hourly rate \u00d7 prep time / 30 to produce labor cost per student per meal. Simple arithmetic on numbers students already gathered.",
-      "d": 3,
-      "tag": "labor-calc-hourly-78",
-      "w": 4,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Labor calc: hourly \u00d7 time / 30",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_035",
-      "pin": false
-    },
-    {
       "s": 115,
       "std": [
         "W.1",
@@ -1293,51 +1159,6 @@
         "G8"
       ],
       "id": "blk_g78_062",
-      "pin": false
-    },
-    {
-      "s": 105,
-      "std": [
-        "6.RP.A.2"
-      ],
-      "desc": "L15 + L16 combined. Scale the full recipe to 30 servings AND produce the shopping list from the scaled card in one continuous block. 5/6: same-system quantities only \u2014 guides pre-convert metric. 7/8: full conversions (incl. cross-system) by students. Output: a priced-ready shopping list for the grocery store visit.",
-      "d": 1,
-      "tag": "recipe-scaling-78",
-      "w": 4,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Recipe scaling + shopping list (ratio framing)",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_034",
-      "pin": false
-    },
-    {
-      "s": 65,
-      "std": [
-        "5.NBT.B.7",
-        "5.NBT.A.3b"
-      ],
-      "desc": "L18 (G5). Retail vs wholesale: why the gap exists, what volume buying does to unit cost. G5 calculates the dollar difference for their own ingredient list. Comes after the wholesale supplier visit so they have real numbers to work with.",
-      "d": 4,
-      "tag": "retail-wholesale-decimal-78",
-      "w": 4,
-      "locked": false,
-      "tp": "challenge",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Retail vs wholesale: decimal comparison",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_037",
       "pin": false
     },
     {
@@ -1540,29 +1361,6 @@
       "pin": false
     },
     {
-      "s": 65,
-      "std": [
-        "5.NBT.B.7",
-        "7.RP.A.3"
-      ],
-      "desc": "L21 split (1 of 2). Overhead = packaging + delivery + restaurant margin. Worked example. 5/6 takes overhead as a flat dollar add-on; 7/8 derives it as a percentage of ingredient cost (how restaurants actually compute it).",
-      "d": 4,
-      "tag": "overhead-concept-78",
-      "w": 5,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Overhead: concept",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_045",
-      "pin": false
-    },
-    {
       "s": 0,
       "std": [
         "W.7",
@@ -1695,28 +1493,6 @@
         "G8"
       ],
       "id": "blk_g78_033",
-      "pin": false
-    },
-    {
-      "s": 100,
-      "std": [
-        "6.RP.A.1"
-      ],
-      "desc": "L11+L12 combined (I do). G6 'I do' / model phase. Guide works one ratio + fraction-mult problem from a real recipe card start to finish on the board. Students follow along, do not work yet.",
-      "d": 0,
-      "tag": "ratios-recipe-ido-78",
-      "w": 3,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Ratios applied to recipe (I do)",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_022",
       "pin": false
     },
     {
@@ -1980,28 +1756,6 @@
       "pin": false
     },
     {
-      "s": 140,
-      "std": [
-        "3.MD.B.3"
-      ],
-      "desc": "L24 instructional half. Build the bar chart that becomes the team's visual: what goes on each axis, how to label, what makes a chart legible vs cluttered. Then apply to one dataset (cost or nutrition) in the same block.",
-      "d": 2,
-      "tag": null,
-      "w": 5,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Bar chart construction: axes and labeling",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_043",
-      "pin": false
-    },
-    {
       "s": 390,
       "std": [],
       "desc": "End-of-day anchor. Reflect on what got produced, what's stuck, what's next. Not new instruction.",
@@ -2088,28 +1842,6 @@
       ],
       "id": "blk_011",
       "pin": null
-    },
-    {
-      "s": 140,
-      "std": [
-        "5.MD.A.1"
-      ],
-      "desc": "L13 split (1 of 2). Unit conversion within volume \u2014 teaspoon \u2192 tablespoon \u2192 cup \u2192 pint \u2192 quart. Use real recipe-card quantities. Same-system only. 7/8 reviews quickly and moves toward cross-system.",
-      "d": 2,
-      "tag": "unit-conv-volume-78",
-      "w": 3,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Unit conversion: volume",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_025",
-      "pin": false
     },
     {
       "s": 90,
@@ -2886,9 +2618,7 @@
       "ttl": "FULL DAY: Panel Day 2 + mastery assessments + final reflection",
       "grades": [
         "G5",
-        "G6",
-        "G7",
-        "G8"
+        "G6"
       ],
       "id": "blk_033",
       "pin": true
@@ -3429,28 +3159,6 @@
       "pin": false
     },
     {
-      "s": 140,
-      "std": [
-        "3.MD.B.3"
-      ],
-      "desc": "L25. Bar chart: macronutrient totals per day vs the team's agreed targets across the 5-day menu. Shows where the menu hits and where it falls short \u2014 drives the gap analysis lesson.",
-      "d": 3,
-      "tag": null,
-      "w": 5,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Bar chart: nutritional targets",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_044",
-      "pin": false
-    },
-    {
       "s": 225,
       "std": [],
       "desc": "Daily routine. 6 minutes: reaction time (Human Benchmark), Stroop, digit span. Log scores + lunch in shared Sheet. Runs at the same time every day from week 2 onward.",
@@ -3859,52 +3567,6 @@
       ],
       "id": "blk_226",
       "pin": null
-    },
-    {
-      "s": 105,
-      "std": [
-        "6.RP.A.1",
-        "6.RP.A.2"
-      ],
-      "desc": "L11+L12 combined (We do / You do). Apply ratios + unit rate to the full recipe card. Every team scales their actual recipe ingredient by ingredient. G7/G8 cohort.",
-      "d": 1,
-      "tag": "ratios-unitrate-recipe-78",
-      "w": 3,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Ratio + unit rate: full recipe",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_023",
-      "pin": false
-    },
-    {
-      "s": 105,
-      "std": [
-        "5.MD.A.1",
-        "7.RP.A.2"
-      ],
-      "desc": "L20 split (1 of 2). What labor cost is in a professional kitchen, why it often exceeds ingredient cost. Estimate prep time with the chef's input. Conceptual + estimation only \u2014 calculation lives in the next block.",
-      "d": 4,
-      "tag": "labor-concept-78",
-      "w": 4,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Labor cost: concept + estimation",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_038",
-      "pin": false
     },
     {
       "s": 390,
@@ -4463,28 +4125,6 @@
       "pin": null
     },
     {
-      "s": 105,
-      "std": [
-        "W.7"
-      ],
-      "desc": "L31 split (2 of 3). Continue nutritional analysis through the rest of the 5-day menu. Macronutrient totals per day across the week. Goal: data ready for gap analysis next session.",
-      "d": 1,
-      "tag": "nutrition-2-78",
-      "w": 6,
-      "locked": false,
-      "tp": "challenge",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Nutritional analysis: session 2 (5-day scan)",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_050",
-      "pin": false
-    },
-    {
       "s": 390,
       "std": [],
       "desc": "End-of-day anchor. Reflect on what got produced, what's stuck, what's next. Not new instruction.",
@@ -4649,28 +4289,6 @@
       ],
       "id": "blk_217",
       "pin": null
-    },
-    {
-      "s": 140,
-      "std": [
-        "5.NF.B.4"
-      ],
-      "desc": "L12. Direct instruction on multiplying a fraction by a whole number \u2014 the operation behind every recipe scaling task. 5/6: split the room based on the diagnostic; students who are fluent move straight to application. 7/8: students fluent on this start mixed numbers and improper fractions in the same session.",
-      "d": 4,
-      "tag": "frac-mult-instruction-78",
-      "w": 2,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Fraction \u00d7 whole: instruction",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_021",
-      "pin": false
     },
     {
       "s": 225,
@@ -5372,29 +4990,6 @@
       "pin": false
     },
     {
-      "s": 140,
-      "std": [
-        "5.NF.B.4",
-        "5.MD.A.1"
-      ],
-      "desc": "Added (5/6). Substituted for cross-system conversion. Builds fluency on fraction multiplication + same-system unit conversion before scaling. Confirms readiness to do the real recipe scaling.",
-      "d": 4,
-      "tag": "fluency-frac-conv-78",
-      "w": 3,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Fluency: fraction mult + unit conv",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_030",
-      "pin": false
-    },
-    {
       "s": 120,
       "std": [
         "W.7",
@@ -6083,28 +5678,6 @@
       "pin": false
     },
     {
-      "s": 140,
-      "std": [
-        "RI.1"
-      ],
-      "desc": "L22 split (2 of 2). Check every figure in the cost model against its source. If a number can't be traced, it gets fixed or removed. The traceability check is the actual assessment of whether the team did the underlying work themselves.",
-      "d": 0,
-      "tag": "cost-model-verify-78",
-      "w": 5,
-      "locked": false,
-      "tp": "math",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Cost model: verify each figure traces to source",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_041",
-      "pin": false
-    },
-    {
       "s": 390,
       "std": [],
       "desc": "End-of-day anchor. Reflect on what got produced, what's stuck, what's next. Not new instruction.",
@@ -6225,28 +5798,6 @@
         "G8"
       ],
       "id": "blk_g78_061",
-      "pin": false
-    },
-    {
-      "s": 105,
-      "std": [
-        "MS-LS1-7"
-      ],
-      "desc": "L5 follow-up. Insulin and metabolic regulation: cellular uptake of glucose, why the post-spike overshoot happens, why diet is a legitimate cognitive-performance variable, not just a health one. Pair with cognitive data once it's accumulating.",
-      "d": 0,
-      "tag": "bio-4b-insulin-78",
-      "w": 4,
-      "locked": false,
-      "tp": "biology",
-      "std_defensible": [],
-      "dur": 35,
-      "anc": false,
-      "ttl": "Biology 4b: insulin + metabolic follow-up",
-      "grades": [
-        "G7",
-        "G8"
-      ],
-      "id": "blk_g78_032",
       "pin": false
     },
     {
@@ -6588,6 +6139,775 @@
       ],
       "id": "blk_189",
       "pin": null
+    },
+    {
+      "id": "blk_g7_007",
+      "w": 6,
+      "d": 1,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Buffer / reteach block",
+      "std": [],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "challenge",
+      "tag": "buffer-reteach-block-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_g7_009",
+      "w": 8,
+      "d": 4,
+      "s": 0,
+      "dur": 420,
+      "ttl": "FULL DAY: Panel Day 2 + mastery assessments + final reflection",
+      "std": [
+        "SL.4",
+        "W.1",
+        "L.6"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "challenge",
+      "tag": "full-day-panel-day-2-mastery-ass-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_g8_010",
+      "w": 8,
+      "d": 4,
+      "s": 0,
+      "dur": 420,
+      "ttl": "FULL DAY: Panel Day 2 + mastery assessments + final reflection",
+      "std": [
+        "SL.4",
+        "W.1",
+        "L.6"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "challenge",
+      "tag": "full-day-panel-day-2-mastery-ass-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_001",
+      "w": 2,
+      "d": 2,
+      "s": 70,
+      "dur": 35,
+      "ttl": "Rational ops warmup",
+      "std": [
+        "7.NS.A.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "rational-ops-warmup-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_002",
+      "w": 2,
+      "d": 2,
+      "s": 70,
+      "dur": 35,
+      "ttl": "Linear function preview: rate of change",
+      "std": [
+        "8.F.B.4"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "linear-function-preview-rate-of-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_003",
+      "w": 2,
+      "d": 4,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Unit rate with fractions: concept",
+      "std": [
+        "7.RP.A.1"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "unit-rate-with-fractions-concept-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_004",
+      "w": 2,
+      "d": 4,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Slope concept review",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "slope-concept-review-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_005",
+      "w": 2,
+      "d": 4,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Unit rate: practice",
+      "std": [
+        "7.RP.A.1"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "unit-rate-practice-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_006",
+      "w": 2,
+      "d": 4,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Slope practice on abstract data",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "slope-practice-on-abstract-data-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_007",
+      "w": 3,
+      "d": 0,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Unit rate applied to recipe",
+      "std": [
+        "7.RP.A.1",
+        "7.RP.A.2"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "unit-rate-applied-to-recipe-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_008",
+      "w": 3,
+      "d": 0,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Proportional relationships: recipe scaling",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "proportional-relationships-recip-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_009",
+      "w": 3,
+      "d": 1,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Multi-step operations with recipe",
+      "std": [
+        "7.EE.B.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "multi-step-operations-with-recip-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_010",
+      "w": 3,
+      "d": 1,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Function form: C=pn+b introduced",
+      "std": [
+        "8.F.B.4"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "function-form-c-pn-b-introduced-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_011",
+      "w": 3,
+      "d": 2,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Unit conversion: volume (proportions)",
+      "std": [
+        "7.RP.A.2"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "unit-conversion-volume-proportio-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_012",
+      "w": 3,
+      "d": 2,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Plot C=pn+b on coordinate plane",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "plot-c-pn-b-on-coordinate-plane-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_013",
+      "w": 3,
+      "d": 3,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Cross-system conversion: grams to ounces",
+      "std": [
+        "7.RP.A.1"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "cross-system-conversion-grams-to-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_014",
+      "w": 3,
+      "d": 3,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Two-line graph: wholesale vs retail",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "two-line-graph-wholesale-vs-reta-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_015",
+      "w": 3,
+      "d": 4,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Cross-system conv session 2 (tbsp\u2192mL)",
+      "std": [
+        "7.RP.A.1"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "cross-system-conv-session-2-tbsp-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_016",
+      "w": 3,
+      "d": 4,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Two-line graph interpretation",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "two-line-graph-interpretation-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_017",
+      "w": 4,
+      "d": 0,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Recipe scaling + shopping list",
+      "std": [
+        "7.RP.A.2",
+        "7.EE.B.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "recipe-scaling-shopping-list-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_018",
+      "w": 4,
+      "d": 0,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Recipe scaling: function form verification",
+      "std": [
+        "8.F.B.4"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "recipe-scaling-function-form-ver-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_019",
+      "w": 4,
+      "d": 3,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Retail vs wholesale: proportionality",
+      "std": [
+        "7.RP.A.2"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "retail-vs-wholesale-proportional-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_020",
+      "w": 4,
+      "d": 3,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Retail vs wholesale: slope comparison",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "retail-vs-wholesale-slope-compar-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_021",
+      "w": 4,
+      "d": 4,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Labor calc: proportional reasoning",
+      "std": [
+        "7.RP.A.2"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "labor-calc-proportional-reasonin-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_022",
+      "w": 4,
+      "d": 4,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Labor as slope: $/hr identified",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "labor-as-slope-hr-identified-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_023",
+      "w": 5,
+      "d": 0,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Overhead derivation as percentage",
+      "std": [
+        "7.RP.A.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "overhead-derivation-as-percentag-78",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7",
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_024",
+      "w": 5,
+      "d": 1,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Cost model build: full assembly",
+      "std": [
+        "7.EE.B.3",
+        "7.RP.A.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "cost-model-build-full-assembly-78",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7",
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_025",
+      "w": 5,
+      "d": 2,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Pricing: cost-plus-margin",
+      "std": [
+        "7.RP.A.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "pricing-cost-plus-margin-7",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_026",
+      "w": 5,
+      "d": 2,
+      "s": 65,
+      "dur": 35,
+      "ttl": "Slope review: what if cost isn't fixed?",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "slope-review-what-if-cost-isn-t-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_027",
+      "w": 5,
+      "d": 2,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Draft profit and loss: one-page",
+      "std": [
+        "7.RP.A.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "draft-profit-and-loss-one-page-78",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7",
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_028",
+      "w": 5,
+      "d": 3,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Proportionality table: wholesale + retail as two lines",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "proportionality-table-wholesale-78",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7",
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_029",
+      "w": 7,
+      "d": 0,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Cognitive data review: scatter plot",
+      "std": [
+        "8.SP.A.1"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "cognitive-data-review-scatter-pl-78",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7",
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_030",
+      "w": 7,
+      "d": 4,
+      "s": 65,
+      "dur": 60,
+      "ttl": "Kitchen debrief + revised profit/loss",
+      "std": [
+        "7.RP.A.3"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "kitchen-debrief-revised-profit-l-78",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G7",
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_n_031",
+      "w": 6,
+      "d": 1,
+      "s": 105,
+      "dur": 35,
+      "ttl": "Slope review session 2: multi-day scaling",
+      "std": [
+        "8.EE.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "math",
+      "tag": "slope-review-session-2-multi-day-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_g8_032",
+      "w": 2,
+      "d": 1,
+      "s": 70,
+      "dur": 45,
+      "ttl": "FoodData Central: interpretation",
+      "std": [
+        "W.7",
+        "L.6"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "challenge",
+      "tag": "fooddata-central-interpretation-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
+    },
+    {
+      "id": "blk_g8_033",
+      "w": 2,
+      "d": 1,
+      "s": 120,
+      "dur": 35,
+      "ttl": "Cognitive baseline: setup",
+      "std": [
+        "5.MD.A.2",
+        "6.SP.B.5"
+      ],
+      "desc": "",
+      "std_defensible": [],
+      "tp": "cog-check",
+      "tag": "cognitive-baseline-setup-8",
+      "anc": false,
+      "pin": false,
+      "grades": [
+        "G8"
+      ],
+      "locked": false
     }
   ]
 }
