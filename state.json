@@ -6560,7 +6560,9 @@
   "currentWeek": 1,
   "viewMode": "grid",
   "guideFilter": "all",
-  "selectedBlockIds": [],
+  "selectedBlockIds": [
+    "blk_g78_009"
+  ],
   "selectedPinId": null,
   "fullChallenge": false,
   "grades": [
@@ -6587,5 +6589,5 @@
     "G7",
     "G8"
   ],
-  "__schema_version": "2026-04-28T16:05:28Z"
+  "__schema_version": "2026-04-28T16:20:07Z"
 }
