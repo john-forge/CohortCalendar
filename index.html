@@ -150,6 +150,11 @@
   .lineage-selected .ls-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
   .lineage-empty { font-size: 11px; color: var(--muted); font-style: italic; padding: 2px 0; }
   .lineage-summary { padding: 8px 14px; background: var(--bg); font-size: 11px; color: var(--ink); font-weight: 500; border-top: 1px solid var(--line); }
+  .lineage-grades { display: flex; gap: 4px; flex-wrap: wrap; }
+  .lin-grade-chip { padding: 2px 10px; border: 1px solid var(--line); background: transparent; cursor: pointer; font-size: 11px; border-radius: 10px; color: var(--muted); user-select: none; font-variant: tabular-nums; }
+  .lin-grade-chip:hover { border-color: var(--ink); color: var(--ink); }
+  .lin-grade-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .lin-grade-chip.active:hover { color: #fff; }
 
   .lineage-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; padding: 4px 2px; font-size: 11.5px; border-radius: 3px; }
   .lineage-row.clickable { cursor: pointer; }
@@ -1347,6 +1352,9 @@ function applyAction(action, direction) {
     } else if (want === 'soft' && has) {
       b.std_defensible = b.std_defensible.filter(s => s !== action.std_code);
     }
+  } else if (action.type === 'edit-grades') {
+    // before/after are full grades arrays. Replace wholesale.
+    b.grades = (direction === 'undo' ? action.before : action.after).slice();
   }
 }
 
@@ -2247,8 +2255,23 @@ function renderLineagePanel() {
       <div class="lineage-label">SELECTED${moreNote}</div>
       <div class="lineage-selected">
         <div class="ls-title">${escapeHtml(b.ttl)}</div>
-        <div class="ls-meta">Wk ${b.w} ${DAY_LABELS[b.d]} · ${formatTime(b.s)} · ${gradesLabel(b.grades)}</div>
+        <div class="ls-meta">Wk ${b.w} ${DAY_LABELS[b.d]} · ${formatTime(b.s)}</div>
       </div>
+    </div>`;
+
+  // GRADES — one chip per configured grade. Toggling a chip mutates b.grades
+  // (with collision check vs any other block at the same slot whose grades
+  // would now overlap). Locked anchor blocks render chips read-only.
+  const blockGrades = new Set(b.grades || []);
+  const gradeChips = (state.grades || []).map(g => {
+    const active = blockGrades.has(g.id) ? ' active' : '';
+    const dis = b.locked ? ' disabled' : '';
+    return `<button class="lin-grade-chip${active}" data-act="toggle-grade" data-grade="${escapeHtml(g.id)}"${dis}>${escapeHtml(g.label)}</button>`;
+  }).join('');
+  html += `
+    <div class="lineage-group" data-section="grades">
+      <div class="lineage-label">GRADES</div>
+      <div class="lineage-grades">${gradeChips}</div>
     </div>`;
 
   // Description section — read mode by default. The Edit button toggles to
@@ -2357,6 +2380,39 @@ function renderLineagePanel() {
   list.querySelector('.back-link').onclick = (e) => { e.preventDefault(); clearSelection(); };
   list.querySelectorAll('.lineage-row.clickable[data-id]').forEach(row => {
     row.onclick = () => focusAndReroot(row.dataset.id);
+  });
+
+  // Grade chip toggles: add or remove a single grade from b.grades.
+  // Refuse to leave the block grade-less. Collision-check the new grades
+  // set against every other block in the same slot (same w/d, overlapping
+  // s..s+dur) — if any other block now intersects, revert and alert.
+  list.querySelectorAll('.lin-grade-chip[data-act="toggle-grade"]').forEach(chip => {
+    chip.onclick = () => {
+      if (b.locked) return;
+      const gid = chip.dataset.grade;
+      const before = (b.grades || []).slice();
+      const set = new Set(before);
+      if (set.has(gid)) set.delete(gid); else set.add(gid);
+      if (set.size === 0) {
+        alert('A block must cover at least one grade.');
+        return;
+      }
+      const after = (state.grades || []).map(g => g.id).filter(id => set.has(id));
+      const collision = state.blocks.find(o =>
+        o.id !== b.id &&
+        o.w === b.w && o.d === b.d &&
+        gradesIntersect(o.grades, after) &&
+        b.s < o.s + o.dur && b.s + b.dur > o.s
+      );
+      if (collision) {
+        alert(`Can't add ${gid} — collides with "${collision.ttl}" at the same time.`);
+        return;
+      }
+      b.grades = after;
+      pushUndo({ type: 'edit-grades', blockId: b.id, before, after: after.slice() });
+      saveState();
+      render();
+    };
   });
 
   // Description edit/save flow. The button toggles between read mode
