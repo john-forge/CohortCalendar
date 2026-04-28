@@ -452,7 +452,7 @@ const DOC_ID = 'main';          // row id in the `documents` table
 // it differs from what this browser saw last time (localStorage), we
 // flag it as NEW so you can confirm a Pages deploy actually landed.
 // ============================================================
-const BUILD_VERSION = '2026-04-28T22:29:27Z';
+const BUILD_VERSION = '2026-04-28T22:43:00Z';
 let _buildVersionLogged = false;
 function _logBuildVersionOnce() {
   if (_buildVersionLogged) return;
@@ -582,14 +582,39 @@ const PIN_SERVICE = {"client-brief-concept": "PIN-restaurant-meeting", "client-b
 // (e.g. bio-1-mechanical-78). PIN events are shared across cohorts so they
 // keep their bare names. This block mirrors PREREQS and PIN_SERVICE so the
 // warning system covers both cohorts without duplicating literals.
+//
+// Selective mirror: per the source-of-truth Excel curriculum, G7 and G8
+// run their OWN math sequences (unit rate / proportionality for G7,
+// slope / linear functions for G8) — they are NOT "advanced versions of
+// G5/G6 fractions and ratios". So we explicitly do NOT mirror grade-
+// specific math tags into -78 entries, and we drop them from the prereq
+// chains of the entries we do mirror. The G7/G8 math curriculum will
+// need its own prereq map once those blocks are properly re-tagged
+// (TODO: rebuild G7/G8 math blocks per the Excel).
 {
   const _PINS = new Set(["PIN-restaurant-meeting","PIN-grocery-visit","PIN-wholesale-visit","PIN-kitchen-visit","PIN-panel-1","PIN-panel-2"]);
+  const _G56_ONLY = new Set([
+    // G5 fraction multiplication track
+    "frac-mult-instruction","frac-mult-practice","frac-mult-recipe-ido","frac-mult-full-recipe",
+    // G5 unit conversion / fluency
+    "unit-conv-weight","unit-conv-volume","fluency-frac-conv",
+    // G6 ratios track
+    "ratios-concept","ratios-practice","ratios-unitrate","ratios-recipe-ido","ratios-unitrate-recipe",
+    // G6 stats track (G7/G8 do scatter plots / 8.SP per Excel)
+    "mmm-data","mmm-concept",
+    // Cohort-specific labor calc forms
+    "labor-calc-hourly","labor-calc-unitrate",
+  ]);
   const _suf = (t) => _PINS.has(t) ? t : t + '-78';
   for (const k of Object.keys({...PREREQS})) {
     if (_PINS.has(k)) continue;
-    PREREQS[k + '-78'] = PREREQS[k].map(_suf);
+    if (_G56_ONLY.has(k)) continue;
+    PREREQS[k + '-78'] = PREREQS[k]
+      .filter(p => !_G56_ONLY.has(p))   // drop G5/G6-only prereqs from -78 chain
+      .map(_suf);
   }
   for (const k of Object.keys({...PIN_SERVICE})) {
+    if (_G56_ONLY.has(k)) continue;
     PIN_SERVICE[k + '-78'] = PIN_SERVICE[k];  // PIN target is shared across cohorts
   }
 }
