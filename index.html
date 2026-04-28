@@ -1331,6 +1331,12 @@ function pushUndo(action) {
   redoStack = [];  // any new action invalidates the redo branch
 }
 
+// When true, the next renderLineagePanel() immediately enters title-edit
+// mode on the focal block. Set in drag-create's pointerup so the flow is:
+// drag → release → cursor in title input. Declared up here so functions
+// further down the file can read it without a let/TDZ error.
+let _autoFocusTitleAfterRender = false;
+
 function applyAction(action, direction) {
   if (action.type === 'group-move') {
     // Iterate every per-block change in the action's changes array.
@@ -3321,10 +3327,8 @@ document.addEventListener('keydown', (e) => {
 // ============================================================
 let createDrag = null;
 let createPreviewEl = null;
-// When true, the next renderLineagePanel() will immediately enter title-edit
-// mode. Set right before render() in drag-create's pointerup so the flow is:
-// drag → release → cursor in title input → type name → Enter → done.
-let _autoFocusTitleAfterRender = false;
+// _autoFocusTitleAfterRender is declared up near the top of the script so
+// renderLineagePanel can reference it without a TDZ error.
 
 function clearCreatePreview() {
   if (createPreviewEl) { createPreviewEl.remove(); createPreviewEl = null; }
