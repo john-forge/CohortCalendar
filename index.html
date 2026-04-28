@@ -168,6 +168,10 @@
   .lin-tag-input { width: 100%; font-size: 11.5px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); font-family: inherit; color: var(--ink); box-sizing: border-box; }
   .lin-tag-input:focus { outline: none; border-color: var(--accent); }
   .lin-tag-input:disabled { background: var(--bg); color: var(--muted); cursor: not-allowed; }
+  /* Delete button (side panel danger action). */
+  .lin-delete-btn { width: 100%; padding: 6px 10px; border: 1px solid var(--warn); background: transparent; color: var(--warn); cursor: pointer; font-size: 11px; border-radius: 4px; font-family: inherit; }
+  .lin-delete-btn:hover { background: var(--warn-soft); }
+  .lin-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .lineage-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; padding: 4px 2px; font-size: 11.5px; border-radius: 3px; }
   .lineage-row.clickable { cursor: pointer; }
@@ -2270,6 +2274,50 @@ function lineageRow({glyph, title, placement, gap, tone, clickable, id}) {
     </div>`;
 }
 
+// Delete a single block after a confirm dialog that lists downstream
+// impact (which blocks reference this block's tag as a prereq, and whether
+// any sibling blocks share the tag and would still satisfy the prereq).
+// Reuses the 'multi-delete' undo type so Cmd+Z restores the block.
+function deleteBlockWithConfirm(b) {
+  if (b.locked) return;
+  const dependents = [];
+  if (b.tag) {
+    for (const [childTag, parents] of Object.entries(PREREQS)) {
+      if (parents.includes(b.tag)) {
+        for (const cb of state.blocks) {
+          if (cb.tag === childTag && cb.id !== b.id) dependents.push(cb);
+        }
+      }
+    }
+  }
+  const siblings = b.tag
+    ? state.blocks.filter(x => x.tag === b.tag && x.id !== b.id)
+    : [];
+
+  let msg = `Delete "${b.ttl}"?`;
+  if (b.tag && dependents.length) {
+    if (siblings.length > 0) {
+      msg += `\n\n${siblings.length} other block(s) share tag "${b.tag}", so ${dependents.length} dependent block(s) stay covered.`;
+    } else {
+      msg += `\n\nThis is the only block with tag "${b.tag}". Deleting it breaks the prereq for:`;
+      for (const d of dependents.slice(0, 8)) {
+        msg += `\n  • ${d.ttl} (Wk ${d.w} ${DAY_LABELS[d.d]})`;
+      }
+      if (dependents.length > 8) msg += `\n  …and ${dependents.length - 8} more.`;
+    }
+  }
+  msg += `\n\n(Cmd+Z to undo.)`;
+
+  if (!confirm(msg)) return;
+
+  const snapshot = JSON.parse(JSON.stringify(b));
+  state.blocks = state.blocks.filter(x => x.id !== b.id);
+  state.selectedBlockIds = (state.selectedBlockIds || []).filter(id => id !== b.id);
+  pushUndo({ type: 'multi-delete', blocks: [snapshot] });
+  saveState();
+  render();
+}
+
 function renderLineagePanel() {
   const list = document.getElementById('warn-list');
   const focalId = focalBlockId();
@@ -2312,13 +2360,20 @@ function renderLineagePanel() {
 
   // TAG — the prereq-graph identifier. A block with no tag isn't part of
   // the dependency graph at all (so PREREQS/DEPENDENTS stay empty for it).
-  // Free-form text input — typing a tag that isn't in PREREQS just means
-  // "this block has no listed prereqs", which is fine for new content.
+  // Backed by a <datalist> autocomplete: shows the union of PREREQS keys +
+  // every tag currently used on any block, so users can pick a known tag
+  // without memorizing 140+ identifiers. Free-form is still allowed for
+  // brand-new tags.
   const tagDis = b.locked ? ' disabled' : '';
+  const tagUniverse = new Set(Object.keys(PREREQS));
+  for (const x of state.blocks) if (x.tag) tagUniverse.add(x.tag);
+  const tagOpts = [...tagUniverse].sort()
+    .map(t => `<option value="${escapeHtml(t)}"></option>`).join('');
   html += `
     <div class="lineage-group" data-section="tag">
-      <div class="lineage-label">TAG <span style="font-weight: normal; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 10px;">— links into prereq graph</span></div>
-      <input type="text" class="lin-tag-input" value="${escapeHtml(b.tag || '')}" placeholder="(no tag — not in graph)"${tagDis} />
+      <div class="lineage-label">TAG <span style="font-weight: normal; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 10px;">— links into prereq graph (start typing for suggestions)</span></div>
+      <input type="text" class="lin-tag-input" list="lin-tag-suggestions" value="${escapeHtml(b.tag || '')}" placeholder="(no tag — not in graph)"${tagDis} />
+      <datalist id="lin-tag-suggestions">${tagOpts}</datalist>
     </div>`;
 
   // Description section — read mode by default. The Edit button toggles to
@@ -2423,6 +2478,17 @@ function renderLineagePanel() {
     html += `</div>`;
   }
 
+  // DELETE — danger action. Disabled for locked blocks (must unlock first).
+  // The button itself reuses the existing 'multi-delete' undo type, so
+  // Cmd+Z restores the deleted block immediately.
+  const deleteDis = b.locked ? ' disabled' : '';
+  const deleteHint = b.locked ? 'Right-click block + unlock code first' : 'Removes this block (Cmd+Z to undo)';
+  html += `
+    <div class="lineage-group" data-section="delete">
+      <button class="lin-delete-btn" data-act="delete-block"${deleteDis}>Delete block</button>
+      <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">${deleteHint}</div>
+    </div>`;
+
   list.innerHTML = html;
   list.querySelector('.back-link').onclick = (e) => { e.preventDefault(); clearSelection(); };
   list.querySelectorAll('.lineage-row.clickable[data-id]').forEach(row => {
@@ -2466,6 +2532,14 @@ function renderLineagePanel() {
       _autoFocusTitleAfterRender = false;
       setTimeout(enterEdit, 0);
     }
+  }
+
+  // Delete button. Confirms with a list of blocks that will lose this block
+  // as one of their prereqs, so the user can see downstream impact before
+  // committing. Reuses the 'multi-delete' undo type so Cmd+Z restores it.
+  const deleteBtn = list.querySelector('.lin-delete-btn[data-act="delete-block"]');
+  if (deleteBtn && !b.locked) {
+    deleteBtn.onclick = () => deleteBlockWithConfirm(b);
   }
 
   // Tag input: free-form text, blur or Enter saves.
@@ -3209,6 +3283,19 @@ document.addEventListener('keydown', (e) => {
   if (mod && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) { e.preventDefault(); undo(); return; }
   if (mod && (e.key === 'z' || e.key === 'Z') &&  e.shiftKey) { e.preventDefault(); redo(); return; }
   if (mod && (e.key === 'y' || e.key === 'Y'))                { e.preventDefault(); redo(); return; }
+
+  // Backspace / Delete deletes the focal block (with the same confirm
+  // dialog the side-panel button uses). Locked blocks are skipped — the
+  // user must unlock first.
+  if (!mod && (e.key === 'Backspace' || e.key === 'Delete')) {
+    const id = focalBlockId();
+    if (!id) return;
+    const focalBlock = state.blocks.find(x => x.id === id);
+    if (!focalBlock || focalBlock.locked) return;
+    e.preventDefault();
+    deleteBlockWithConfirm(focalBlock);
+    return;
+  }
 
   // 'L' toggles lock on the focal block. No modifier; modifier presence
   // means the user intended a different shortcut.
