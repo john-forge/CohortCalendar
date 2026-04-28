@@ -156,6 +156,10 @@
   .lin-grade-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .lin-grade-chip.active:hover { color: #fff; }
 
+  /* Empty-cell drag-create preview rectangle. Sits above grid columns,
+     non-interactive so it doesn't block subsequent pointer events. */
+  .create-preview { position: absolute; background: var(--accent-soft); border: 1.5px dashed var(--accent); border-radius: 4px; pointer-events: none; z-index: 5; box-sizing: border-box; }
+
   .lineage-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; padding: 4px 2px; font-size: 11.5px; border-radius: 3px; }
   .lineage-row.clickable { cursor: pointer; }
   .lineage-row.clickable:hover { background: var(--bg); }
@@ -3120,6 +3124,137 @@ document.addEventListener('keydown', (e) => {
     render();
     e.preventDefault();
   }
+});
+
+// ============================================================
+// CREATE BY DRAG — pointerdown on empty grid + pointermove draws a preview;
+// pointerup mints a new block. No-movement releases fall through to the
+// existing click handler below (which clears selection).
+// ============================================================
+let createDrag = null;
+let createPreviewEl = null;
+
+function clearCreatePreview() {
+  if (createPreviewEl) { createPreviewEl.remove(); createPreviewEl = null; }
+}
+
+cal.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  // Ignore if the press lands on something interactive — existing handlers own it.
+  if (e.target.closest('.block')) return;
+  if (e.target.closest('.pin-label')) return;
+  if (e.target.closest('.hdr')) return;
+
+  const calRect = cal.getBoundingClientRect();
+  const x = e.clientX - calRect.left;
+  const y = e.clientY - calRect.top;
+
+  // Find which (w, d, g) grade column the press is in by scanning the
+  // measured column metrics. Only visible columns have entries.
+  let hit = null;
+  for (const w of Object.keys(columnMetrics)) {
+    const wm = columnMetrics[w];
+    for (const d of Object.keys(wm)) {
+      const dm = wm[d];
+      for (const g of Object.keys(dm)) {
+        const col = dm[g];
+        if (x >= col.left && x <= col.right) { hit = { w: +w, d: +d, g }; break; }
+      }
+      if (hit) break;
+    }
+    if (hit) break;
+  }
+  if (!hit) return;
+
+  // Compute starting slot from y. Reject if above the grid or past day end.
+  const yInGrid = y - headerHeight;
+  if (yInGrid < 0) return;
+  const totalSlots = (DAY_END_MIN - DAY_START_MIN) / SLOT_MIN;
+  const startSlot = Math.max(0, Math.min(totalSlots - 1, Math.floor(yInGrid / SLOT_PX)));
+
+  createDrag = {
+    w: hit.w, d: hit.d, g: hit.g,
+    startSlot, currentSlot: startSlot,
+    pointerId: e.pointerId,
+    originX: e.clientX, originY: e.clientY,
+    moved: false,
+  };
+  // Capture so pointermove/pointerup keep firing even if the pointer leaves cal.
+  try { cal.setPointerCapture(e.pointerId); } catch(_) {}
+});
+
+cal.addEventListener('pointermove', (e) => {
+  if (!createDrag || e.pointerId !== createDrag.pointerId) return;
+  const dx = e.clientX - createDrag.originX;
+  const dy = e.clientY - createDrag.originY;
+  if (!createDrag.moved && Math.hypot(dx, dy) < 4) return;
+  createDrag.moved = true;
+
+  const calRect = cal.getBoundingClientRect();
+  const y = e.clientY - calRect.top;
+  const totalSlots = (DAY_END_MIN - DAY_START_MIN) / SLOT_MIN;
+  const slot = Math.max(0, Math.min(totalSlots - 1, Math.floor((y - headerHeight) / SLOT_PX)));
+  createDrag.currentSlot = slot;
+
+  if (!createPreviewEl) {
+    createPreviewEl = document.createElement('div');
+    createPreviewEl.className = 'create-preview';
+    cal.appendChild(createPreviewEl);
+  }
+  const col = columnMetrics[createDrag.w][createDrag.d][createDrag.g];
+  const top = headerHeight + Math.min(createDrag.startSlot, createDrag.currentSlot) * SLOT_PX;
+  const slots = Math.abs(createDrag.currentSlot - createDrag.startSlot) + 1;
+  createPreviewEl.style.left   = (col.left + 2) + 'px';
+  createPreviewEl.style.width  = (col.right - col.left - 4) + 'px';
+  createPreviewEl.style.top    = top + 'px';
+  createPreviewEl.style.height = (slots * SLOT_PX) + 'px';
+});
+
+cal.addEventListener('pointerup', (e) => {
+  if (!createDrag || e.pointerId !== createDrag.pointerId) return;
+  try { cal.releasePointerCapture(e.pointerId); } catch(_) {}
+  const drag = createDrag;
+  createDrag = null;
+  clearCreatePreview();
+
+  // No movement → not a create; let the click handler below clear selection.
+  if (!drag.moved) return;
+
+  const startSlot = Math.min(drag.startSlot, drag.currentSlot);
+  const endSlot   = Math.max(drag.startSlot, drag.currentSlot);
+  const s   = startSlot * SLOT_MIN + DAY_START_MIN;
+  const dur = (endSlot - startSlot + 1) * SLOT_MIN;
+  if (dur < 10) return; // ignore accidental tiny drags
+
+  const nb = {
+    id: `blk_n_${Date.now()}`,
+    w: drag.w, d: drag.d, s, dur,
+    ttl: 'New block', std: [], tp: 'challenge',
+    tag: null, anc: false, pin: false,
+    grades: [drag.g], locked: false,
+    desc: '', std_defensible: [],
+  };
+
+  const collision = state.blocks.find(o =>
+    o.w === nb.w && o.d === nb.d &&
+    gradesIntersect(o.grades, nb.grades) &&
+    nb.s < o.s + o.dur && nb.s + nb.dur > o.s
+  );
+  if (collision) {
+    alert(`Can't create — overlaps "${collision.ttl}".`);
+    return;
+  }
+
+  state.blocks.push(nb);
+  state.selectedBlockIds = [nb.id];
+  pushUndo({ type: 'multi-add', blocks: [JSON.parse(JSON.stringify(nb))] });
+  saveState();
+  render();
+});
+
+cal.addEventListener('pointercancel', () => {
+  createDrag = null;
+  clearCreatePreview();
 });
 
 // Clicking empty grid space (a .slot with no block above it) clears selection.
