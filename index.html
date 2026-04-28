@@ -446,6 +446,28 @@ const SUPABASE_URL = 'https://vaqdoeckaobmsalikmpx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_UlWZDjS5Yx07Cl-reOlLAg_qOsp7DLn';   // the project's anon/public key
 const DOC_ID = 'main';          // row id in the `documents` table
 
+// ============================================================
+// BUILD VERSION — bumped by bump_build_version.sh before each commit.
+// On the first user interaction after page load, we log the version. If
+// it differs from what this browser saw last time (localStorage), we
+// flag it as NEW so you can confirm a Pages deploy actually landed.
+// ============================================================
+const BUILD_VERSION = '2026-04-28T22:16:22Z';
+let _buildVersionLogged = false;
+function _logBuildVersionOnce() {
+  if (_buildVersionLogged) return;
+  _buildVersionLogged = true;
+  const last = localStorage.getItem('cohort-build-seen');
+  if (last === BUILD_VERSION) {
+    console.log(`[build] ${BUILD_VERSION}`);
+  } else {
+    console.log(`%c[build] ${BUILD_VERSION} ⚡ NEW (was ${last || 'first visit'})`, 'color: #c24f1d; font-weight: bold;');
+    localStorage.setItem('cohort-build-seen', BUILD_VERSION);
+  }
+}
+window.addEventListener('pointerdown', _logBuildVersionOnce, { once: true, capture: true });
+window.addEventListener('keydown',     _logBuildVersionOnce, { once: true, capture: true });
+
 // A per-tab id so we can ignore realtime events that echo our own writes.
 const CLIENT_ID = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
 
