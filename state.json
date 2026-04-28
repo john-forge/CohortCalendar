@@ -31,7 +31,7 @@
   ],
   "viewMode": "grid",
   "guideFilter": "all",
-  "__schema_version": "2026-04-28T23:28:08Z",
+  "__schema_version": "2026-04-28T23:40:18Z",
   "blocks": [
     {
       "s": 105,
@@ -186,7 +186,7 @@
       "pin": null
     },
     {
-      "s": 140,
+      "s": 65,
       "std": [
         "W.7"
       ],
@@ -319,7 +319,7 @@
       "pin": null
     },
     {
-      "s": 90,
+      "s": 140,
       "std": [
         "RI.1",
         "RI.2",
@@ -806,7 +806,7 @@
       "pin": false
     },
     {
-      "s": 65,
+      "s": 140,
       "std": [
         "MS-ETS1-3"
       ],
@@ -828,10 +828,10 @@
       "pin": false
     },
     {
-      "s": 140,
+      "s": 65,
       "std": [],
       "desc": "L38 split (2 of 3). Knife skills: grip, basic cuts, safety. Practice in school with whatever blades are available before the kitchen visit. Students should not pick up a knife for the first time in a professional kitchen.",
-      "d": 0,
+      "d": 3,
       "tag": "kitchen-culture-knife-78",
       "w": 7,
       "locked": false,
@@ -996,7 +996,7 @@
         "MS-LS1-7"
       ],
       "desc": "L3. Digestive chemistry: amylase on starch, stomach acid on protein, bile on fat, absorption across the small intestine wall. Demonstrate the iodine test live so the chemistry is concrete. 5/6 stays at the demo level; 7/8 engages with enzyme/bond-breaking mechanism and surface area.",
-      "d": 2,
+      "d": 3,
       "tag": "bio-2-chemical",
       "w": 1,
       "locked": false,
@@ -1139,7 +1139,7 @@
       "pin": null
     },
     {
-      "s": 115,
+      "s": 30,
       "std": [
         "W.1",
         "SL.4"
@@ -1628,7 +1628,7 @@
       "pin": false
     },
     {
-      "s": 140,
+      "s": 90,
       "std": [
         "MS-LS1-7"
       ],
@@ -2122,12 +2122,12 @@
       "pin": null
     },
     {
-      "s": 70,
+      "s": 105,
       "std": [
         "W.4"
       ],
       "desc": "Revise the brief based on guide review. Brief must be clean, specific, and answer-ready before the restaurant meeting. No team meets a partner with an unreviewed brief.",
-      "d": 3,
+      "d": 4,
       "tag": "brief-revision-78",
       "w": 3,
       "locked": false,
@@ -2169,7 +2169,7 @@
         "MS-LS1-7"
       ],
       "desc": "L5. Glucose, energy, and cognitive performance. Simple-carb spike-and-crash vs sustained energy from complex carbs. 5/6: ground in their lived experience (candy \u2192 great \u2192 terrible) then the biology. 7/8: add insulin's role and glycemic index.",
-      "d": 3,
+      "d": 2,
       "tag": "bio-4-glucose",
       "w": 2,
       "locked": false,
@@ -2929,7 +2929,7 @@
         "SL.1"
       ],
       "desc": "Added. Guide reads every team's draft brief, gives direct feedback. Are nutritional targets realistic and traceable to the FDC work? Are the chef questions specific enough to get useful answers? Teams revise after.",
-      "d": 4,
+      "d": 3,
       "tag": "guide-review-briefs-78",
       "w": 3,
       "locked": false,
@@ -2986,7 +2986,7 @@
       "pin": null
     },
     {
-      "s": 130,
+      "s": 30,
       "std": [
         "MS-LS1-7"
       ],
@@ -3525,7 +3525,7 @@
       "pin": false
     },
     {
-      "s": 105,
+      "s": 70,
       "std": [
         "SL.1",
         "SL.4",
@@ -3662,7 +3662,7 @@
         "MS-LS1-3"
       ],
       "desc": "L6. Gut-brain axis and specific nutrient\u2013system connections: serotonin in the gut, iron and oxygen transport, omega-3s and adolescent brain dev, protein \u2192 neurotransmitters. Why 'calories' obscures all of this. 5/6: the connections they can feel (nervous \u2192 stomach). 7/8: name the neurotransmitters and their precursors.",
-      "d": 2,
+      "d": 3,
       "tag": "bio-5-gutbrain",
       "w": 2,
       "locked": false,
@@ -3788,12 +3788,12 @@
       "pin": false
     },
     {
-      "s": 65,
+      "s": 140,
       "std": [
         "L.6"
       ],
       "desc": "L38 split (1 of 3). Mise en place: what it is, why pro kitchens run on it. How prep gets staged before any heat goes on. Set the cultural expectation before the visit, not at the visit.",
-      "d": 3,
+      "d": 0,
       "tag": "kitchen-culture-mise-78",
       "w": 7,
       "locked": false,
@@ -4420,7 +4420,7 @@
       "pin": null
     },
     {
-      "s": 30,
+      "s": 130,
       "std": [
         "MS-LS1-3"
       ],
@@ -5057,7 +5057,7 @@
       "pin": false
     },
     {
-      "s": 30,
+      "s": 85,
       "std": [
         "MS-LS1-7"
       ],
@@ -5148,7 +5148,7 @@
         "MS-LS1-3"
       ],
       "desc": "L2. The digestive system as a mechanical process: how food moves from ingestion through stomach to small intestine. 5/6: concrete language, factory-line analogy. 7/8: introduce peristalsis, bolus, chyme.",
-      "d": 3,
+      "d": 2,
       "tag": "bio-1-mechanical",
       "w": 1,
       "locked": false,
@@ -5467,7 +5467,7 @@
       "pin": null
     },
     {
-      "s": 85,
+      "s": 30,
       "std": [
         "MS-LS1-3"
       ],
@@ -5778,7 +5778,7 @@
       "pin": null
     },
     {
-      "s": 30,
+      "s": 115,
       "std": [
         "W.1",
         "W.4"
