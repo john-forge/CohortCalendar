@@ -172,6 +172,12 @@
   .lin-delete-btn { width: 100%; padding: 6px 10px; border: 1px solid var(--warn); background: transparent; color: var(--warn); cursor: pointer; font-size: 11px; border-radius: 4px; font-family: inherit; }
   .lin-delete-btn:hover { background: var(--warn-soft); }
   .lin-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* Standards picker — add input + remove button per row */
+  .std-row .std-remove { background: transparent; border: none; cursor: pointer; padding: 0 6px; color: var(--muted); font-size: 14px; line-height: 1; opacity: 0.6; }
+  .std-row .std-remove:hover { color: var(--warn); opacity: 1; }
+  .std-add-row { display: flex; gap: 4px; margin-top: 6px; }
+  .std-add-input { flex: 1; font-size: 11.5px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); font-family: inherit; color: var(--ink); box-sizing: border-box; }
+  .std-add-input:focus { outline: none; border-color: var(--accent); }
 
   .lineage-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; padding: 4px 2px; font-size: 11.5px; border-radius: 3px; }
   .lineage-row.clickable { cursor: pointer; }
@@ -447,12 +453,61 @@ const SUPABASE_ANON_KEY = 'sb_publishable_UlWZDjS5Yx07Cl-reOlLAg_qOsp7DLn';   //
 const DOC_ID = 'main';          // row id in the `documents` table
 
 // ============================================================
+// STANDARDS DATABASE — pre-fetched from Learning Commons Knowledge
+// Graph MCP. Backs the side-panel "Add standard..." picker. Each entry
+// is one standard code with its authoritative description. ELA codes
+// without a grade prefix (W.4, RI.1, etc.) use the grade-5 description
+// as canonical since the cohort's primary grade is G5/G6. Free-form
+// codes not in this list still save fine — they just won't show a
+// description.
+// ============================================================
+const STANDARDS_DB = [
+  // CCSS Mathematics (Multi-State)
+  {code: "3.MD.B.3", subject: "Mathematics", description: "Draw a scaled picture graph and a scaled bar graph to represent a data set with several categories. Solve one- and two-step \"how many more\" and \"how many less\" problems."},
+  {code: "5.MD.A.1", subject: "Mathematics", description: "Convert among different-sized standard measurement units within a given measurement system, and use these conversions in solving multi-step, real world problems."},
+  {code: "5.MD.A.2", subject: "Mathematics", description: "(Common Core measurement / line plot — full text not in MCP)"},
+  {code: "5.NBT.A.3b", subject: "Mathematics", description: "Read, write, and compare decimals to thousandths (sub-letter b of 5.NBT.A.3)."},
+  {code: "5.NBT.B.7", subject: "Mathematics", description: "Add, subtract, multiply, and divide decimals to hundredths, using concrete models or drawings and strategies based on place value, properties of operations, and/or the relationship between addition and subtraction."},
+  {code: "5.NF.B.4", subject: "Mathematics", description: "Apply and extend previous understandings of multiplication to multiply a fraction or whole number by a fraction."},
+  {code: "6.NS.B.3", subject: "Mathematics", description: "Fluently add, subtract, multiply, and divide multi-digit decimals using the standard algorithm for each operation."},
+  {code: "6.RP.A.1", subject: "Mathematics", description: "Understand the concept of a ratio and use ratio language to describe a ratio relationship between two quantities."},
+  {code: "6.RP.A.2", subject: "Mathematics", description: "Understand the concept of a unit rate a/b associated with a ratio a:b with b≠0, and use rate language in the context of a ratio relationship."},
+  {code: "6.SP.B.5", subject: "Mathematics", description: "Summarize numerical data sets in relation to their context."},
+  {code: "7.NS.A.3", subject: "Mathematics", description: "Solve real-world and mathematical problems involving the four operations with rational numbers."},
+  {code: "7.RP.A.2", subject: "Mathematics", description: "Recognize and represent proportional relationships between quantities."},
+  {code: "7.RP.A.3", subject: "Mathematics", description: "Use proportional relationships to solve multistep ratio and percent problems."},
+  // NGSS (Multi-State)
+  {code: "5-PS1-3", subject: "Science", description: "Make observations and measurements to identify materials based on their properties."},
+  {code: "5-PS1-4", subject: "Science", description: "Conduct an investigation to determine whether the mixing of two or more substances results in new substances."},
+  {code: "MS-ETS1-1", subject: "Science", description: "Define the criteria and constraints of a design problem with sufficient precision to ensure a successful solution, taking into account relevant scientific principles and potential impacts."},
+  {code: "MS-ETS1-3", subject: "Science", description: "Analyze data from tests to determine similarities and differences among several design solutions to identify the best characteristics of each that can be combined."},
+  {code: "MS-LS1-3", subject: "Science", description: "Use argument supported by evidence for how the body is a system of interacting subsystems composed of groups of cells."},
+  {code: "MS-LS1-7", subject: "Science", description: "Develop a model to describe how food is rearranged through chemical reactions forming new molecules that support growth and/or release energy."},
+  {code: "MS-PS1-2", subject: "Science", description: "Analyze and interpret data on the properties of substances before and after the substances interact to determine if a chemical reaction has occurred."},
+  // CCSS ELA (shorthand without grade prefix; descriptions from grade-5 version)
+  {code: "L.6", subject: "English Language Arts", description: "Acquire and use accurately grade-appropriate general academic and domain-specific words and phrases."},
+  {code: "RI.1", subject: "English Language Arts", description: "Quote accurately from a text when explaining what the text says explicitly and when drawing inferences from the text."},
+  {code: "RI.2", subject: "English Language Arts", description: "Determine two or more main ideas of a text and explain how they are supported by key details; summarize the text."},
+  {code: "RI.8", subject: "English Language Arts", description: "Explain how an author uses reasons and evidence to support particular points in a text."},
+  {code: "SL.1", subject: "English Language Arts", description: "Engage effectively in a range of collaborative discussions on grade-level topics and texts."},
+  {code: "SL.3", subject: "English Language Arts", description: "Summarize the points a speaker makes and explain how each claim is supported by reasons and evidence."},
+  {code: "SL.4", subject: "English Language Arts", description: "Report on a topic or text or present an opinion, sequencing ideas logically and using appropriate facts and details."},
+  {code: "SL.5", subject: "English Language Arts", description: "Include multimedia components and visual displays in presentations to enhance development of main ideas."},
+  {code: "SL.6", subject: "English Language Arts", description: "Adapt speech to a variety of contexts and tasks, using formal English when appropriate."},
+  {code: "W.1", subject: "English Language Arts", description: "Write opinion pieces on topics or texts, supporting a point of view with reasons and information."},
+  {code: "W.2", subject: "English Language Arts", description: "Write informative/explanatory texts to examine a topic and convey ideas and information clearly."},
+  {code: "W.4", subject: "English Language Arts", description: "Produce clear and coherent writing in which the development and organization are appropriate to task, purpose, and audience."},
+  {code: "W.6", subject: "English Language Arts", description: "Use technology, including the Internet, to produce and publish writing as well as to interact and collaborate with others."},
+  {code: "W.7", subject: "English Language Arts", description: "Conduct short research projects that use several sources to build knowledge through investigation."},
+];
+
+// ============================================================
 // BUILD VERSION — bumped by bump_build_version.sh before each commit.
 // On the first user interaction after page load, we log the version. If
 // it differs from what this browser saw last time (localStorage), we
 // flag it as NEW so you can confirm a Pages deploy actually landed.
 // ============================================================
-const BUILD_VERSION = '2026-04-29T00:19:52Z';
+const BUILD_VERSION = '2026-04-29T01:41:49Z';
 let _buildVersionLogged = false;
 function _logBuildVersionOnce() {
   if (_buildVersionLogged) return;
@@ -1456,6 +1511,14 @@ function applyAction(action, direction) {
     b.ttl = direction === 'undo' ? action.before : action.after;
   } else if (action.type === 'edit-tag') {
     b.tag = direction === 'undo' ? action.before : action.after;
+  } else if (action.type === 'edit-std') {
+    // before/after are full std arrays. Replace wholesale. Also clean up
+    // std_defensible to only reference codes that are in the new std list.
+    b.std = (direction === 'undo' ? action.before : action.after).slice();
+    if (Array.isArray(b.std_defensible)) {
+      const ok = new Set(b.std);
+      b.std_defensible = b.std_defensible.filter(c => ok.has(c));
+    }
   }
 }
 
@@ -2456,27 +2519,51 @@ function renderLineagePanel() {
       <div data-role="desc-body">${descBody}</div>
     </div>`;
 
-  // Standards section — only if b.std has entries. Each row: code + tier
-  // badge. Click badge to flip tier (defensible <-> soft). Section header
-  // shows live counts.
-  if (Array.isArray(b.std) && b.std.length) {
+  // Standards section — always rendered for unlocked blocks (so an empty-
+  // standards block can still get one added). Each row: code + tier badge
+  // + remove [×]. Below the rows, an "Add standard..." input backed by a
+  // datalist of codes from STANDARDS_DB so users get autocomplete.
+  const stdList = Array.isArray(b.std) ? b.std : [];
+  if (stdList.length || !b.locked) {
     const defSet = new Set(Array.isArray(b.std_defensible) ? b.std_defensible : []);
-    const defCount = b.std.filter(s => defSet.has(s)).length;
-    const softCount = b.std.length - defCount;
+    const defCount = stdList.filter(s => defSet.has(s)).length;
+    const softCount = stdList.length - defCount;
     let stdRows = '';
-    for (const code of b.std) {
+    for (const code of stdList) {
       const isDef = defSet.has(code);
       const cls = isDef ? 'defensible' : 'soft';
       const label = isDef ? '✓ defensible' : '~ soft';
+      const remove = b.locked ? '' :
+        `<button class="std-remove" data-act="remove-std" data-code="${escapeHtml(code)}" title="Remove">×</button>`;
       stdRows += `<div class="std-row">
         <span class="std-code">${escapeHtml(code)}</span>
         <span class="tier-badge ${cls}" data-act="toggle-tier" data-code="${escapeHtml(code)}">${label}</span>
+        ${remove}
       </div>`;
     }
+    // Build datalist of suggestions: code with description as visible label
+    let stdSuggestions = '';
+    if (typeof STANDARDS_DB !== 'undefined') {
+      for (const s of STANDARDS_DB) {
+        // Skip codes already on this block
+        if (stdList.includes(s.code)) continue;
+        const desc = (s.description || '').slice(0, 80);
+        stdSuggestions += `<option value="${escapeHtml(s.code)}">${escapeHtml(desc)}</option>`;
+      }
+    }
+    const addRow = b.locked ? '' : `
+      <div class="std-add-row">
+        <input type="text" class="std-add-input" list="lin-std-suggestions" placeholder="Add standard… (e.g. 5.NF.B.4)" />
+        <datalist id="lin-std-suggestions">${stdSuggestions}</datalist>
+      </div>`;
+    const header = stdList.length
+      ? `STANDARDS (${defCount} defensible · ${softCount} soft)`
+      : `STANDARDS`;
     html += `
       <div class="lineage-group" data-section="standards">
-        <div class="lineage-label">STANDARDS (${defCount} defensible · ${softCount} soft)</div>
+        <div class="lineage-label">${header}</div>
         ${stdRows}
+        ${addRow}
       </div>`;
   }
 
@@ -2699,6 +2786,48 @@ function renderLineagePanel() {
       // but this guards against future DOM restructuring.
       ta.addEventListener('pointerdown', (e) => e.stopPropagation());
     };
+  }
+
+  // Remove a standard from b.std via the [×] button.
+  list.querySelectorAll('.std-remove[data-act="remove-std"]').forEach(btn => {
+    btn.onclick = () => {
+      if (b.locked) return;
+      const code = btn.dataset.code;
+      const before = (b.std || []).slice();
+      const after = before.filter(c => c !== code);
+      if (after.length === before.length) return;
+      pushUndo({ type: 'edit-std', blockId: b.id, before, after });
+      b.std = after;
+      if (Array.isArray(b.std_defensible)) {
+        b.std_defensible = b.std_defensible.filter(c => c !== code);
+      }
+      saveState();
+      render();
+    };
+  });
+
+  // Add a standard via the input. Commits on Enter, on blur, or on
+  // datalist 'change'. Clears immediately so duplicate fires are no-ops.
+  const stdAddInput = list.querySelector('.std-add-input');
+  if (stdAddInput && !b.locked) {
+    const commitAdd = () => {
+      const code = stdAddInput.value.trim();
+      stdAddInput.value = '';
+      if (!code) return;
+      const before = (b.std || []).slice();
+      if (before.includes(code)) return;  // already there, no-op
+      const after = [...before, code];
+      pushUndo({ type: 'edit-std', blockId: b.id, before, after });
+      b.std = after;
+      saveState();
+      render();
+    };
+    stdAddInput.addEventListener('change', commitAdd);
+    stdAddInput.addEventListener('blur', commitAdd);
+    stdAddInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter')  { e.preventDefault(); commitAdd(); }
+      if (e.key === 'Escape') { e.preventDefault(); stdAddInput.value = ''; stdAddInput.blur(); }
+    });
   }
 
   // Tier toggle on standard badges. Each click flips defensible <-> soft
