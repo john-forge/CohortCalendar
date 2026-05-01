@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cohort // Drill</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #08080b; --bg-2: #0c0c10;
+  --surface: #101015; --surface-2: #16161d; --surface-3: #1c1c25;
+  --border: #21212c; --border-hot: #2e2e3c;
+  --ink: #f4f4f7; --ink-2: #a3a3b0; --ink-3: #5c5c6a; --ink-4: #353542;
+  --kevin-1: #ff7a45; --kevin-2: #ff3d6e; --kevin-glow: rgba(255, 99, 80, 0.35);
+  --john-1: #00d4ff;  --john-2: #5865ff; --john-glow: rgba(0, 184, 255, 0.32);
+  --good: #00ff95; --good-soft: rgba(0,255,149,0.12);
+  --bad: #ff3d6e; --bad-soft: rgba(255,61,110,0.12);
+  --gold: #ffd166;
+  --sans: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", Consolas, monospace;
+  --bevel: 10px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--sans);
+  font-feature-settings: "ss01", "cv11"; font-size: 14px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 1200px 600px at 20% -10%, rgba(255, 122, 69, 0.06), transparent 60%),
+    radial-gradient(ellipse 1000px 500px at 90% 10%, rgba(0, 184, 255, 0.05), transparent 60%),
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+  background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+}
+.app { padding: 28px 24px 60px; max-width: 920px; margin: 0 auto; }
+
+/* HEADER */
+.hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-2); }
+.brand .glyph { width: 18px; height: 18px; background: linear-gradient(135deg, var(--kevin-1), var(--john-2)); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.brand b { color: var(--ink); font-weight: 600; }
+.hdr-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: 0.06em; text-align: right; }
+.hdr-meta b { color: var(--ink-2); font-weight: 500; }
+.conn-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--border-hot); font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); background: var(--surface); }
+.conn-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); transition: background 200ms; }
+.conn-pill.live .dot { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.conn-pill.dead .dot { background: var(--bad); }
+.conn-pill.boot .dot { background: var(--gold); animation: pulse-dot 1.2s infinite; }
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* PRE-GAME LANDING */
+.landing {
+  text-align: center; padding: 80px 24px 60px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  clip-path: polygon(var(--bevel) 0, 100% 0, 100% calc(100% - var(--bevel)), calc(100% - var(--bevel)) 100%, 0 100%, 0 var(--bevel));
+}
+.landing h2 { font-size: 26px; margin: 0 0 8px; letter-spacing: -0.01em; }
+.landing .lede { color: var(--ink-2); font-size: 14px; margin-bottom: 32px; max-width: 480px; margin-left: auto; margin-right: auto; }
+.landing .pick { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.landing .pick a {
+  display: block; padding: 18px 28px; min-width: 160px; text-decoration: none;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700;
+  border: 1px solid var(--border-hot);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition: transform 120ms ease, filter 200ms ease;
+}
+.landing .pick a:hover { transform: translateY(-2px); filter: brightness(1.15); }
+.landing .pick a.kevin { background: linear-gradient(180deg, var(--kevin-1), var(--kevin-2)); color: var(--bg); }
+.landing .pick a.john  { background: linear-gradient(180deg, var(--john-1),  var(--john-2));  color: var(--bg); }
+.landing .footnote { color: var(--ink-3); font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; margin-top: 28px; }
+
+/* SCOREBOARD */
+.score-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; margin-bottom: 24px; }
+.vs-divider { display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; letter-spacing: 0.3em; color: var(--ink-3); position: relative; min-width: 36px; }
+.vs-divider::before, .vs-divider::after { content: ""; flex: 1; width: 1px; background: linear-gradient(180deg, transparent, var(--border-hot), transparent); margin: 4px 0; }
+
+.player {
+  position: relative; padding: 18px 18px 16px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  clip-path: polygon(var(--bevel) 0, 100% 0, 100% calc(100% - var(--bevel)), calc(100% - var(--bevel)) 100%, 0 100%, 0 var(--bevel));
+  transition: border-color 220ms ease, transform 220ms ease, filter 220ms ease;
+  overflow: hidden;
+}
+.player::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, var(--player-glow, transparent)); opacity: 0; transition: opacity 300ms ease; pointer-events: none; }
+.player.kevin { --player-1: var(--kevin-1); --player-2: var(--kevin-2); --player-glow: var(--kevin-glow); }
+.player.john  { --player-1: var(--john-1);  --player-2: var(--john-2);  --player-glow: var(--john-glow); }
+.player.you { outline: 1px dashed var(--ink-3); outline-offset: -7px; }
+.player.active { border-color: transparent; }
+.player.active::before { opacity: 1; }
+.player.active.kevin { box-shadow: 0 0 0 1px rgba(255, 99, 80, 0.55), 0 16px 60px -10px var(--kevin-glow); animation: breathe-k 2.4s ease-in-out infinite; }
+.player.active.john  { box-shadow: 0 0 0 1px rgba(0, 184, 255, 0.5),  0 16px 60px -10px var(--john-glow);  animation: breathe-j 2.4s ease-in-out infinite; }
+@keyframes breathe-k { 0%,100% { box-shadow: 0 0 0 1px rgba(255,99,80,.55), 0 14px 48px -12px var(--kevin-glow); } 50% { box-shadow: 0 0 0 1px rgba(255,99,80,.7), 0 22px 80px -10px var(--kevin-glow); } }
+@keyframes breathe-j { 0%,100% { box-shadow: 0 0 0 1px rgba(0,184,255,.5), 0 14px 48px -12px var(--john-glow); } 50% { box-shadow: 0 0 0 1px rgba(0,184,255,.7), 0 22px 80px -10px var(--john-glow); } }
+
+.player .stripe { position: absolute; top: 0; left: 0; height: 3px; width: 56px; background: linear-gradient(90deg, var(--player-1), var(--player-2)); }
+.player .top-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+.player .name { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+.player.kevin .name { background: linear-gradient(90deg, var(--kevin-1), var(--kevin-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.player.john  .name { background: linear-gradient(90deg, var(--john-1),  var(--john-2));  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.player .you-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin-left: 4px; }
+.player .tier { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; padding: 3px 7px; border: 1px solid var(--border-hot); color: var(--ink-2); background: rgba(0,0,0,0.3); }
+.player .turn-pill { position: absolute; top: 14px; right: 16px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--bg); padding: 3px 8px; background: linear-gradient(90deg, var(--player-1), var(--player-2)); opacity: 0; transition: opacity 220ms ease; font-weight: 700; }
+.player.active .turn-pill { opacity: 1; }
+.player.active .stripe { display: none; }
+.player .score-num { font-family: var(--mono); font-size: 56px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); margin: 8px 0 4px; text-shadow: 0 0 28px var(--player-glow); }
+.player .score-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; }
+.player .accuracy-bar { height: 4px; background: var(--surface-3); position: relative; overflow: hidden; margin-bottom: 8px; }
+.player .accuracy-fill { position: absolute; top: 0; left: 0; bottom: 0; background: linear-gradient(90deg, var(--player-1), var(--player-2)); width: 0%; transition: width 600ms cubic-bezier(.2,.8,.2,1); box-shadow: 0 0 12px var(--player-glow); }
+.player .stat-row { display: flex; gap: 16px; font-family: var(--mono); font-size: 11px; color: var(--ink-2); letter-spacing: 0.04em; }
+.player .stat-row .v { color: var(--ink); font-weight: 600; }
+.player .stat-row .lbl { color: var(--ink-3); margin-right: 4px; text-transform: uppercase; font-size: 9px; letter-spacing: 0.16em; }
+.player .stat-row .flame { color: var(--gold); }
+
+.score-num.bump { animation: score-bump 480ms cubic-bezier(.2,.8,.2,1); }
+@keyframes score-bump { 0% { transform: scale(1); } 35% { transform: scale(1.12); text-shadow: 0 0 38px var(--player-glow), 0 0 2px var(--player-1); } 100% { transform: scale(1); } }
+
+/* CARD */
+.card { position: relative; padding: 24px 24px 22px; margin-bottom: 18px; background: linear-gradient(180deg, var(--surface), var(--surface-2)); border: 1px solid var(--border); clip-path: polygon(var(--bevel) 0, 100% 0, 100% calc(100% - var(--bevel)), calc(100% - var(--bevel)) 100%, 0 100%, 0 var(--bevel)); }
+.card::before, .card::after { content: ""; position: absolute; width: 14px; height: 14px; border: 1px solid var(--border-hot); pointer-events: none; }
+.card::before { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+.card::after  { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
+
+.eyebrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; align-items: center; }
+.tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; padding: 4px 9px; color: var(--ink-2); background: var(--surface-3); border: 1px solid var(--border); }
+.tag.qtype { color: var(--ink); border-color: var(--border-hot); }
+.tag.mode { color: var(--ink-2); }
+.tag.turn-k { background: linear-gradient(90deg, rgba(255,122,69,0.18), rgba(255,61,110,0.18)); border-color: rgba(255,99,80,0.4); color: var(--kevin-1); }
+.tag.turn-j { background: linear-gradient(90deg, rgba(0,212,255,0.16), rgba(88,101,255,0.16)); border-color: rgba(0,184,255,0.4); color: var(--john-1); }
+.tag.watching { color: var(--ink-3); border-style: dashed; }
+
+.slot-line { font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; color: var(--ink-2); margin-bottom: 6px; }
+.slot-line .pri { color: var(--ink); font-weight: 600; }
+.slot-line .sep { color: var(--ink-4); margin: 0 6px; }
+
+.q-meta { font-size: 13px; color: var(--ink-2); margin: 8px 0 4px; }
+.q-meta em { font-style: normal; color: var(--ink); font-weight: 500; }
+.q-prompt { font-size: 22px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.25; color: var(--ink); margin: 14px 0 18px; }
+.q-class-title { font-size: 22px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.25; color: var(--ink); margin: 4px 0 8px; }
+.q-helper { color: var(--ink-2); font-size: 13px; margin-bottom: 14px; }
+
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.choice { position: relative; text-align: left; padding: 14px 16px 14px 44px; min-height: 56px; background: var(--surface-2); border: 1px solid var(--border); color: var(--ink); font: inherit; font-size: 13.5px; line-height: 1.35; cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); transition: background 160ms ease, border-color 160ms ease, transform 120ms ease, color 160ms ease; }
+.choice .num { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-size: 11px; color: var(--ink-3); width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--border-hot); }
+.choice:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-hot); }
+.choice:hover:not(:disabled) .num { color: var(--ink); border-color: var(--ink-3); }
+.choice.correct { background: var(--good-soft); border-color: var(--good); color: var(--ink); }
+.choice.correct .num { color: var(--good); border-color: var(--good); }
+.choice.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--ink-2); }
+.choice.wrong .num { color: var(--bad); border-color: var(--bad); }
+.choice:disabled { cursor: default; opacity: 0.65; }
+
+.input-row { display: flex; gap: 8px; }
+input[type=text] { flex: 1; font: inherit; font-size: 16px; padding: 14px 16px; background: var(--surface-2); border: 1px solid var(--border); color: var(--ink); font-family: var(--sans); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); transition: border-color 160ms ease, background 160ms ease; }
+input[type=text]::placeholder { color: var(--ink-3); }
+input[type=text]:focus { outline: none; border-color: var(--john-1); background: var(--surface-3); }
+input[type=text]:disabled { opacity: 0.5; }
+
+button { font: inherit; font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 12px 18px; cursor: pointer; color: var(--ink); background: var(--surface-2); border: 1px solid var(--border); letter-spacing: 0.02em; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); transition: background 160ms ease, border-color 160ms ease, transform 80ms ease; }
+button:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-hot); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { cursor: not-allowed; opacity: 0.4; }
+button.primary { background: linear-gradient(180deg, #fff, #d8d8e0); color: var(--bg); border-color: transparent; font-weight: 700; }
+button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #fff, #ececf2); }
+button.good { background: var(--good); color: var(--bg); border-color: var(--good); font-weight: 700; }
+button.good:hover:not(:disabled) { background: #1bff9d; border-color: #1bff9d; }
+button.bad { background: var(--bad); color: white; border-color: var(--bad); font-weight: 700; }
+button.bad:hover:not(:disabled) { background: #ff5784; border-color: #ff5784; }
+button.ghost { background: transparent; }
+button.ghost:hover:not(:disabled) { background: var(--surface-2); }
+button.small { padding: 7px 12px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.actions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+.feedback { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--border); background: var(--surface-2); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); font-size: 13.5px; animation: slide-in 280ms cubic-bezier(.2,.8,.2,1); }
+@keyframes slide-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.feedback.good { border-left: 3px solid var(--good); background: linear-gradient(90deg, var(--good-soft), var(--surface-2) 60%); }
+.feedback.bad  { border-left: 3px solid var(--bad);  background: linear-gradient(90deg, var(--bad-soft),  var(--surface-2) 60%); }
+.feedback .verdict { font-weight: 700; font-family: var(--mono); letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; }
+.feedback .verdict.ok { color: var(--good); }
+.feedback .verdict.no { color: var(--bad); }
+.feedback .pts { color: var(--gold); font-family: var(--mono); font-size: 11px; margin-left: 8px; }
+.feedback .answer { color: var(--ink); font-weight: 700; }
+.feedback .meta { color: var(--ink-3); font-size: 11px; margin-left: 6px; font-family: var(--mono); }
+.feedback .scorer-name { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-right: 8px; }
+
+.reveal-body { margin-top: 12px; padding: 14px 16px; background: var(--surface-3); border: 1px solid var(--border-hot); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); animation: slide-in 240ms cubic-bezier(.2,.8,.2,1); }
+.subgrade { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; font-size: 13px; }
+.subgrade .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); align-self: center; }
+.subgrade .val { color: var(--ink); font-weight: 600; }
+.self-grade { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+.self-grade .lbl { color: var(--ink-3); font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; margin-right: 6px; }
+
+.spectator-banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 14px; background: var(--surface-3); border: 1px dashed var(--border-hot); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.spectator-banner .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); animation: pulse-dot 1.4s infinite; }
+
+.settings { background: var(--surface); border: 1px solid var(--border); padding: 0; clip-path: polygon(var(--bevel) 0, 100% 0, 100% calc(100% - var(--bevel)), calc(100% - var(--bevel)) 100%, 0 100%, 0 var(--bevel)); margin-bottom: 18px; }
+.settings summary { cursor: pointer; padding: 14px 18px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-2); list-style: none; display: flex; align-items: center; justify-content: space-between; }
+.settings summary::-webkit-details-marker { display: none; }
+.settings summary::after { content: "+"; font-family: var(--mono); font-size: 14px; color: var(--ink-3); }
+.settings[open] summary::after { content: "−"; }
+.settings .body { padding: 6px 18px 18px; border-top: 1px dashed var(--border); }
+.settings .group { margin: 14px 0; }
+.settings .group-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+.settings label { display: inline-flex; align-items: center; gap: 6px; margin: 3px 12px 3px 0; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.settings label:hover { color: var(--ink); }
+.settings input[type=checkbox] { appearance: none; width: 14px; height: 14px; border: 1px solid var(--border-hot); background: var(--surface-2); cursor: pointer; position: relative; margin: 0; }
+.settings input[type=checkbox]:checked { background: var(--ink); border-color: var(--ink); }
+.settings input[type=checkbox]:checked::after { content: ""; position: absolute; left: 3px; top: 0px; width: 4px; height: 8px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.settings .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+.deck-info { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: 0.04em; }
+
+.section-header { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); }
+.section-header::before { content: ""; width: 8px; height: 8px; background: var(--ink-3); transform: rotate(45deg); }
+.section-header::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.history { font-size: 13px; }
+.history .row-h { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); margin-bottom: 6px; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); font-family: var(--mono); font-size: 12px; }
+.history .who { font-weight: 700; min-width: 60px; letter-spacing: 0.04em; }
+.history .who.kevin { color: var(--kevin-1); }
+.history .who.john { color: var(--john-1); }
+.history .summ { flex: 1; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--sans); font-size: 13px; }
+.history .verdict { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; }
+.history .verdict.ok { color: var(--good); }
+.history .verdict.no { color: var(--bad); }
+.history-empty { color: var(--ink-3); font-style: italic; padding: 10px 0; font-size: 13px; }
+
+.foot { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--ink-3); margin-top: 28px; text-align: center; line-height: 1.7; }
+.kbd { display: inline-block; padding: 2px 6px; min-width: 18px; text-align: center; border: 1px solid var(--border-hot); background: var(--surface-2); font-family: var(--mono); font-size: 10px; color: var(--ink-2); }
+
+@media (max-width: 620px) {
+  .score-row { grid-template-columns: 1fr; }
+  .vs-divider { display: none; }
+  .choices { grid-template-columns: 1fr; }
+  .player .score-num { font-size: 44px; }
+  .q-prompt { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="hdr">
+  <div class="brand"><span class="glyph"></span><b>Cohort</b>&nbsp;//&nbsp;Drill</div>
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <div class="hdr-meta">
+      <div><b>FORGE PREP</b> · COHORT_8WK</div>
+      <div id="deckInfo">—</div>
+    </div>
+    <span class="conn-pill boot" id="connPill"><span class="dot"></span><span id="connText">Connecting…</span></span>
+  </div>
+</div>
+
+<div id="landing" class="landing" style="display:none">
+  <h2>Pick your seat</h2>
+  <div class="lede">Two-player realtime drill of the full Forge cohort calendar. Bookmark your link below and you're in.</div>
+  <div class="pick">
+    <a class="kevin" href="?as=kevin">▸ I'm Kevin</a>
+    <a class="john"  href="?as=john">▸ I'm John</a>
+  </div>
+  <div class="footnote">Add <span style="color:var(--ink-2)">?as=kevin</span> or <span style="color:var(--ink-2)">?as=john</span> to the URL.</div>
+</div>
+
+<div id="game" style="display:none">
+
+  <div class="score-row">
+    <div class="player kevin" id="card-kevin">
+      <div class="stripe"></div>
+      <div class="turn-pill">↳ ACTIVE</div>
+      <div class="top-row">
+        <div class="name"><span id="nameKevin">KEVIN</span><span class="you-tag" id="youTagKevin"></span></div>
+        <div class="tier" id="tierKevin">INITIATE</div>
+      </div>
+      <div class="score-num" id="scoreKevin">0</div>
+      <div class="score-label">POINTS</div>
+      <div class="accuracy-bar"><div class="accuracy-fill" id="accFillKevin"></div></div>
+      <div class="stat-row">
+        <span><span class="lbl">acc</span><span class="v" id="accKevin">0%</span></span>
+        <span><span class="lbl">streak</span><span class="v"><span class="flame">⚡</span> <span id="strKevin">0</span></span></span>
+        <span><span class="lbl">best</span><span class="v" id="bestKevin">0</span></span>
+      </div>
+    </div>
+    <div class="vs-divider">VS</div>
+    <div class="player john" id="card-john">
+      <div class="stripe"></div>
+      <div class="turn-pill">↳ ACTIVE</div>
+      <div class="top-row">
+        <div class="name"><span id="nameJohn">JOHN</span><span class="you-tag" id="youTagJohn"></span></div>
+        <div class="tier" id="tierJohn">INITIATE</div>
+      </div>
+      <div class="score-num" id="scoreJohn">0</div>
+      <div class="score-label">POINTS</div>
+      <div class="accuracy-bar"><div class="accuracy-fill" id="accFillJohn"></div></div>
+      <div class="stat-row">
+        <span><span class="lbl">acc</span><span class="v" id="accJohn">0%</span></span>
+        <span><span class="lbl">streak</span><span class="v"><span class="flame">⚡</span> <span id="strJohn">0</span></span></span>
+        <span><span class="lbl">best</span><span class="v" id="bestJohn">0</span></span>
+      </div>
+    </div>
+  </div>
+
+  <details class="settings">
+    <summary>Configure // filters · names · reset</summary>
+    <div class="body">
+      <div class="group"><div class="group-label">Player names</div>
+        <label>Kevin <input type="text" id="p1name" style="width:140px; padding:6px 10px; font-size:13px; clip-path:none; background:var(--surface-2); border:1px solid var(--border-hot); color:var(--ink);" /></label>
+        <label>John <input type="text" id="p2name" style="width:140px; padding:6px 10px; font-size:13px; clip-path:none; background:var(--surface-2); border:1px solid var(--border-hot); color:var(--ink);" /></label>
+      </div>
+      <div class="group"><div class="group-label">Weeks</div><span id="weekFilter"></span></div>
+      <div class="group"><div class="group-label">Cohorts</div><span id="cohortFilter"></span></div>
+      <div class="group"><div class="group-label">Subjects</div><span id="typeFilter"></span></div>
+      <div class="group"><div class="group-label">Question types</div><span id="qtypeFilter"></span></div>
+      <div class="group"><div class="group-label">Answer modes</div><span id="modeFilter"></span></div>
+      <div class="btn-row">
+        <button class="small" id="resetScores">Reset scores</button>
+        <button class="small" id="resetWeights">Reset weights</button>
+        <button class="small bad" id="resetAll">Wipe everything</button>
+      </div>
+    </div>
+  </details>
+
+  <div id="spectator" class="spectator-banner" style="display:none"><span class="pulse"></span><span id="spectatorText">Watching opponent…</span></div>
+
+  <div class="card" id="card">
+    <div class="eyebrow" id="promptMeta"></div>
+    <div id="promptQ"></div>
+    <div id="answerArea"></div>
+    <div class="feedback" id="feedback" style="display:none"></div>
+    <div class="actions" id="actions" style="display:none"></div>
+  </div>
+
+  <div class="section-header">Recent rounds</div>
+  <div id="history" class="history"><div class="history-empty">No rounds yet — first turn sets the tone.</div></div>
+
+  <div class="foot">
+    <span class="kbd">Enter</span> submit · <span class="kbd">N</span> next · <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span> pick · <span class="kbd">Y</span>/<span class="kbd">W</span> self-grade · <span class="kbd">Space</span> reveal<br>
+    Cohort calendar · sep 7 → oct 30, 2026 · realtime via supabase
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+// SUPABASE — same project as the calendar.
+// ============================================================
+const SUPABASE_URL = 'https://vaqdoeckaobmsalikmpx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_UlWZDjS5Yx07Cl-reOlLAg_qOsp7DLn';
+const DOC_ID = 'flashcards';
+const SCHEMA_VERSION = 1;
+
+// ============================================================
+// DECK — 167 substantive blocks @ origin/main 9e1ed79
+// ============================================================
+const DECK_RAW = [{"i":"blk_p_1777489622975_0","w":4,"d":0,"s":275,"st":"1:35 PM","et":"2:05 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 1","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_g78_009","w":1,"d":1,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"challenge","t":"Culture build: teams and roles","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_n_031","w":6,"d":1,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Slope review session 2: multi-day scaling","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_005","w":4,"d":3,"s":45,"st":"9:45 AM","et":"11:15 AM","du":90,"tp":"challenge","t":"Wholesale supplier visit","g":"A","gn":"A (external)","gr":["G5","G6","G7","G8"],"gl":"G5/G6/G7/G8"},{"i":"blk_002","w":7,"d":0,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"challenge","t":"Kitchen culture: mise en place","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777490133591_0","w":6,"d":4,"s":80,"st":"10:20 AM","et":"10:50 AM","du":30,"tp":"challenge","t":"End-of-Exploration Fluency Gate","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_085","w":5,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Overhead: concept","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_001","w":3,"d":4,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"ela","t":"Brief revision + final prep","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_046","w":2,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Fraction × whole: instruction","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_n_027","w":5,"d":2,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"math","t":"Draft Cost Model: one-page","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_008","w":3,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Fluency: fraction mult + unit conv","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_122","w":5,"d":3,"s":105,"st":"10:45 AM","et":"11:20 AM","du":35,"tp":"other","t":"Phone etiquette + cold calling","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_016","w":2,"d":1,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"math","t":"Fraction × whole: practice","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_012","w":3,"d":2,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Plot C=pn+b on coordinate plane","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_n_002","w":2,"d":2,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Linear function preview: rate of change","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_g78_003","w":1,"d":2,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"chem","t":"Biology 2: digestive chemical","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_208","w":7,"d":3,"s":50,"st":"9:50 AM","et":"11:20 AM","du":90,"tp":"other","t":"Lab 2: cooked ingredient samples","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_066","w":8,"d":2,"s":120,"st":"11:00 AM","et":"11:35 AM","du":35,"tp":"challenge","t":"Brand voice analysis + caption writing","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_202","w":7,"d":4,"s":50,"st":"9:50 AM","et":"10:50 AM","du":60,"tp":"math","t":"Kitchen debrief + cost model finalization","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_015","w":3,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Cross-system conv session 2 (tbsp→mL)","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_p_1777489628982_0","w":4,"d":0,"s":275,"st":"1:35 PM","et":"2:05 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 1","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_n_009","w":3,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Multi-step operations with recipe","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_p_1777427261918_0","w":8,"d":1,"s":230,"st":"12:50 PM","et":"1:25 PM","du":35,"tp":"math","t":"Scrimmage: team cost model Q&A","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_004","w":2,"d":4,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Slope concept review","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_033","w":8,"d":4,"s":0,"st":"9:00 AM","et":"4:00 PM","du":420,"tp":"challenge","t":"FULL DAY: Panel Day 2 + mastery assessments + final reflection","g":"A","gn":"A (external)","gr":["G5","G6","G7","G8"],"gl":"G5/G6/G7/G8"},{"i":"blk_g78_056","w":7,"d":0,"s":240,"st":"1:00 PM","et":"1:35 PM","du":35,"tp":"challenge","t":"Kitchen culture: knife skills","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_132","w":1,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"biology","t":"Biology 3: macronutrients","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777489888346_0","w":5,"d":0,"s":275,"st":"1:35 PM","et":"2:05 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 2","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_086","w":5,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Cost model build: ingredients + labor + overhead","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_013","w":5,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Bar chart construction: axes and labeling","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_p_1777429509828_0","w":3,"d":0,"s":245,"st":"1:05 PM","et":"2:05 PM","du":60,"tp":"ela","t":"Client brief: model + team draft (I do / We do)","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_090","w":2,"d":0,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"other","t":"Decimal fluency: addition/subtraction on ingredient prices","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_006","w":2,"d":4,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"math","t":"Slope practice on abstract data","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_g78_020","w":2,"d":1,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"challenge","t":"FoodData Central: interpretation","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_p_1777429453801_0","w":3,"d":0,"s":245,"st":"1:05 PM","et":"2:05 PM","du":60,"tp":"ela","t":"Client brief: model + team draft (I do / We do)","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_014","w":3,"d":3,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Two-line graph: wholesale vs retail","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_258","w":2,"d":4,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"other","t":"Ratios: practice","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_007","w":3,"d":3,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Unit conversion: weight","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_n_026","w":5,"d":2,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Slope review: what if cost isn't fixed?","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_115","w":1,"d":3,"s":245,"st":"1:05 PM","et":"2:35 PM","du":90,"tp":"chem-lab","t":"Chem tests: demo + practice (iodine / Benedict's / brown paper / Biuret)","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_055","w":6,"d":0,"s":75,"st":"10:15 AM","et":"10:50 AM","du":35,"tp":"challenge","t":"Nutritional analysis of menu: session 1","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_063","w":4,"d":3,"s":285,"st":"1:45 PM","et":"2:20 PM","du":35,"tp":"challenge","t":"Retail vs wholesale: unit rate","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_100","w":2,"d":4,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"math","t":"Fraction × whole: practice","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_g78_065","w":8,"d":2,"s":230,"st":"12:50 PM","et":"2:20 PM","du":90,"tp":"challenge","t":"Final rehearsal (simulated panel Q&A)","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_084","w":4,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"challenge","t":"Shopping list finalization + grocery prep","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_060","w":7,"d":3,"s":90,"st":"10:30 AM","et":"12:00 PM","du":90,"tp":"other","t":"Lab 2: cooked ingredient samples","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_p_1777490123251_0","w":6,"d":4,"s":50,"st":"9:50 AM","et":"10:20 AM","du":30,"tp":"challenge","t":"End-of-Exploration Fluency Gate","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_g78_012","w":2,"d":0,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"biology","t":"Biology 5: gut-brain axis","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_061","w":4,"d":0,"s":105,"st":"10:45 AM","et":"11:20 AM","du":35,"tp":"math","t":"Recipe scaling + shopping list","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_n_001","w":2,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Rational ops warmup","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_p_1777489885764_0","w":5,"d":0,"s":245,"st":"1:05 PM","et":"1:35 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 2","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_070","w":2,"d":4,"s":90,"st":"10:30 AM","et":"11:05 AM","du":35,"tp":"other","t":"Ratios: concept (a:b)","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_g78_007","w":1,"d":3,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"biology","t":"Biology 3: macronutrients","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_036","w":4,"d":3,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"ela","t":"Supplier visit debrief + wholesale data entry","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_004","w":1,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"biology","t":"Biology 1: digestive mechanical","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_145","w":8,"d":1,"s":115,"st":"10:55 AM","et":"11:55 AM","du":60,"tp":"challenge","t":"Presentation build: team drafts sections","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_106","w":5,"d":0,"s":105,"st":"10:45 AM","et":"11:20 AM","du":35,"tp":"math","t":"Overhead application: fixed dollar figure","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_120","w":2,"d":1,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"challenge","t":"FoodData Central: interpretation","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_016","w":3,"d":4,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Two-line graph interpretation","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_p_1777427681127_0","w":3,"d":1,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"challenge","t":"Restaurant meeting prep: role play","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_005","w":2,"d":4,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"math","t":"Unit rate: practice","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_g78_006","w":1,"d":1,"s":105,"st":"10:45 AM","et":"11:20 AM","du":35,"tp":"ela","t":"Challenge intro: client brief concept","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_037","w":3,"d":1,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Ratio + unit rate: full recipe","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_163","w":2,"d":3,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"biology","t":"Biology 5: gut-brain axis","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_n_017","w":4,"d":0,"s":100,"st":"10:40 AM","et":"11:15 AM","du":35,"tp":"math","t":"Recipe scaling + shopping list","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_025","w":2,"d":3,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"biology","t":"Biology 5: gut-brain axis","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_g78_014","w":2,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"biology","t":"Biology 4: glucose and energy","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_026","w":2,"d":0,"s":50,"st":"9:50 AM","et":"11:20 AM","du":90,"tp":"other","t":"Lab 1: raw ingredient samples","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_019","w":2,"d":3,"s":50,"st":"9:50 AM","et":"11:20 AM","du":90,"tp":"other","t":"Lab 1: raw ingredient samples","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_087","w":8,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"challenge","t":"Presentation structure + draft (I do)","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_081","w":4,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"ela","t":"Restaurant meeting debrief","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_210","w":1,"d":4,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"ela","t":"Seminar: Reading 1 on food and the body","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777490120986_0","w":6,"d":4,"s":80,"st":"10:20 AM","et":"10:50 AM","du":30,"tp":"challenge","t":"End-of-Exploration Fluency Gate","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_051","w":8,"d":2,"s":295,"st":"1:55 PM","et":"3:25 PM","du":90,"tp":"challenge","t":"Final rehearsal (simulated panel Q&A)","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_041","w":7,"d":3,"s":240,"st":"1:00 PM","et":"2:00 PM","du":60,"tp":"chem-lab","t":"Forensic lab: another team's menu","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_031","w":4,"d":1,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"challenge","t":"Shopping list finalization + grocery prep","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_225","w":4,"d":4,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"math","t":"Labor calc: unit rate form","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_g78_024","w":3,"d":2,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"challenge","t":"Restaurant meeting prep: conduct","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_051","w":6,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"challenge","t":"Nutritional analysis: macros finalized","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_055b","w":6,"d":0,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"challenge","t":"Nutritional analysis: session 2 (5-day scan)","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_205","w":4,"d":4,"s":100,"st":"10:40 AM","et":"11:15 AM","du":35,"tp":"math","t":"Labor calc: hourly × time / 30","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_n_1777489933540","w":6,"d":0,"s":245,"st":"1:05 PM","et":"1:35 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 3","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_p_1777428125357_0","w":6,"d":2,"s":75,"st":"10:15 AM","et":"10:50 AM","du":35,"tp":"challenge","t":"Nutritional analysis: macros finalized","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_048","w":4,"d":1,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"biology","t":"Biology 4b: insulin + metabolic follow-up","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_023","w":5,"d":0,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"math","t":"Overhead derivation as percentage","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_062","w":8,"d":0,"s":115,"st":"10:55 AM","et":"11:55 AM","du":60,"tp":"challenge","t":"Presentation build: team drafts sections","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_027","w":3,"d":3,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"challenge","t":"Restaurant meeting prep: role play","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_n_011","w":3,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Unit conversion: volume (proportions)","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_243","w":5,"d":2,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Bar chart: cost per meal","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_g78_026","w":3,"d":4,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"ela","t":"Brief revision + final prep","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_105","w":1,"d":3,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"diagnostic","t":"Math diagnostic","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_162","w":1,"d":2,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"chem","t":"Biology 2: digestive chemical","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_013","w":3,"d":3,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Cross-system conversion: grams to ounces","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_098","w":7,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"challenge","t":"Kitchen culture: knife skills","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_236","w":6,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"challenge","t":"Nutritional analysis of menu: session 1","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777489882821_0","w":5,"d":0,"s":275,"st":"1:35 PM","et":"2:05 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 2","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_n_003","w":2,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Unit rate with fractions: concept","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_g78_061","w":8,"d":1,"s":50,"st":"9:50 AM","et":"10:50 AM","du":60,"tp":"other","t":"Guide review of drafts (live feedback)","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_n_010","w":3,"d":1,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Function form: C=pn+b introduced","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_g7_diag","w":1,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"diagnostic","t":"Math diagnostic","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_102","w":3,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Unit conversion: volume","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_n_029","w":7,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Cognitive data review: scatter plot","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_156","w":6,"d":3,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"other","t":"Gap analysis: which day, which nutrient","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_005","w":1,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"biology","t":"Biology 1: digestive mechanical","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_068","w":2,"d":1,"s":90,"st":"10:30 AM","et":"11:05 AM","du":35,"tp":"challenge","t":"FoodData Central: navigation","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_050","w":8,"d":2,"s":50,"st":"9:50 AM","et":"10:50 AM","du":60,"tp":"other","t":"Guide review of drafts (live feedback)","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_059","w":7,"d":3,"s":300,"st":"2:00 PM","et":"3:00 PM","du":60,"tp":"chem-lab","t":"Forensic lab: another team's menu","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_017","w":2,"d":3,"s":240,"st":"1:00 PM","et":"1:35 PM","du":35,"tp":"other","t":"Decimal fluency: addition/subtraction on ingredient prices","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_049","w":6,"d":3,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"other","t":"Gap analysis: which day, which nutrient","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_095","w":3,"d":1,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"challenge","t":"Restaurant meeting prep: conduct","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_089","w":3,"d":4,"s":245,"st":"1:05 PM","et":"2:35 PM","du":90,"tp":"challenge","t":"Restaurant partner meeting [PM required]","g":"A","gn":"A (external)","gr":["G5","G6","G7","G8"],"gl":"G5/G6/G7/G8"},{"i":"blk_159","w":8,"d":3,"s":240,"st":"1:00 PM","et":"3:30 PM","du":150,"tp":"challenge","t":"PANEL DAY 1 (5 teams present + defend)","g":"A","gn":"A (external)","gr":["G5","G6","G7","G8"],"gl":"G5/G6/G7/G8"},{"i":"blk_g78_033","w":4,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"ela","t":"Restaurant meeting debrief","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_067","w":8,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"challenge","t":"Presentation structure + draft (I do)","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_010","w":5,"d":1,"s":115,"st":"10:55 AM","et":"11:30 AM","du":35,"tp":"math","t":"Cost model: verify each figure traces to source","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_044","w":4,"d":3,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"challenge","t":"Retail vs wholesale: decimal comparison","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_212","w":8,"d":0,"s":130,"st":"11:10 AM","et":"11:55 AM","du":45,"tp":"challenge","t":"Video editing: kitchen visit footage","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_018","w":4,"d":0,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"math","t":"Recipe scaling: function form verification","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_n_019","w":4,"d":1,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Retail vs wholesale: proportionality","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_012","w":5,"d":2,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"math","t":"Bar chart: nutritional targets","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_188","w":3,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Fraction mult applied to recipe (I do)","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_g78_058","w":7,"d":0,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"challenge","t":"Kitchen culture: mise en place","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_064","w":8,"d":2,"s":330,"st":"2:30 PM","et":"3:30 PM","du":60,"tp":"challenge","t":"Rehearsal revision + last prep","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_001","w":1,"d":4,"s":245,"st":"1:05 PM","et":"2:35 PM","du":90,"tp":"chem-lab","t":"Chem tests: demo + practice (iodine / Benedict's / brown paper / Biuret)","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_n_1777489867264","w":5,"d":0,"s":245,"st":"1:05 PM","et":"1:35 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 2","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_246","w":2,"d":2,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"biology","t":"Biology 4: glucose and energy","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_g78_029","w":3,"d":3,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"ela","t":"Guide review of draft briefs (live feedback)","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_n_030","w":7,"d":4,"s":115,"st":"10:55 AM","et":"11:55 AM","du":60,"tp":"math","t":"Kitchen debrief + revised cost model","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_g78_008","w":1,"d":3,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"ela","t":"Seminar: Reading 1 on food and the body","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_154","w":1,"d":1,"s":145,"st":"11:25 AM","et":"12:00 PM","du":35,"tp":"challenge","t":"Culture build: teams and roles","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_035","w":6,"d":3,"s":245,"st":"1:05 PM","et":"2:05 PM","du":60,"tp":"challenge","t":"Chef communication + menu finalization","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_028","w":5,"d":3,"s":105,"st":"10:45 AM","et":"11:20 AM","du":35,"tp":"math","t":"Proportionality table: wholesale + retail as two lines","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_n_022","w":4,"d":4,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Labor as slope: $/hr identified","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_n_025","w":5,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Pricing: cost-plus-margin","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_093","w":2,"d":2,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"biology","t":"Biology 4: glucose and energy","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_175","w":4,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Labor cost: concept + estimation","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_211","w":8,"d":3,"s":50,"st":"9:50 AM","et":"10:50 AM","du":60,"tp":"challenge","t":"Rehearsal revision + last prep","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_039","w":5,"d":1,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"other","t":"Phone etiquette + cold calling","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777489942665_0","w":6,"d":0,"s":275,"st":"1:35 PM","et":"2:05 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 3","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_088","w":4,"d":3,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"ela","t":"Supplier visit debrief + wholesale data entry","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_g78_018","w":2,"d":1,"s":90,"st":"10:30 AM","et":"11:05 AM","du":35,"tp":"challenge","t":"FoodData Central: navigation","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_n_1777489610169","w":4,"d":0,"s":245,"st":"1:05 PM","et":"1:35 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 1","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_g78_063","w":8,"d":2,"s":50,"st":"9:50 AM","et":"10:35 AM","du":45,"tp":"challenge","t":"Video editing: kitchen visit footage","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_116","w":6,"d":0,"s":110,"st":"10:50 AM","et":"11:25 AM","du":35,"tp":"challenge","t":"Nutritional analysis: session 2 (5-day scan)","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_142","w":4,"d":2,"s":0,"st":"9:00 AM","et":"4:00 PM","du":420,"tp":"challenge","t":"FULL DAY: Grocery store visit","g":"A","gn":"A (external)","gr":["G5","G6","G7","G8"],"gl":"G5/G6/G7/G8"},{"i":"blk_239","w":3,"d":3,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"other","t":"Mean / median / mode: concept","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_034","w":1,"d":1,"s":105,"st":"10:45 AM","et":"11:20 AM","du":35,"tp":"ela","t":"Challenge intro: client brief concept","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777427677362_0","w":3,"d":1,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"challenge","t":"Restaurant meeting prep: conduct","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777489937640_0","w":6,"d":0,"s":275,"st":"1:35 PM","et":"2:05 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 3","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_096","w":3,"d":1,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"challenge","t":"Restaurant meeting prep: role play","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_036","w":3,"d":0,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Ratios applied to recipe (I do)","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_055","w":4,"d":0,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"math","t":"Recipe scaling + shopping list (ratio framing)","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_173","w":8,"d":0,"s":70,"st":"10:10 AM","et":"10:45 AM","du":35,"tp":"challenge","t":"Brand voice analysis + caption writing","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_p_1777489625782_0","w":4,"d":0,"s":245,"st":"1:05 PM","et":"1:35 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 1","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_g78_052","w":6,"d":3,"s":245,"st":"1:05 PM","et":"2:05 PM","du":60,"tp":"challenge","t":"Chef communication + menu finalization","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_p_1777489939862_0","w":6,"d":0,"s":245,"st":"1:05 PM","et":"1:35 PM","du":30,"tp":"challenge","t":"Mid-Exploration Checkpoint 3","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_n_008","w":3,"d":0,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Proportional relationships: recipe scaling","g":"K","gn":"Kevin","gr":["G8"],"gl":"G8"},{"i":"blk_g78_015","w":2,"d":0,"s":245,"st":"1:05 PM","et":"1:40 PM","du":35,"tp":"ela","t":"Seminar: Reading 2 on calories as limited metric","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_195","w":3,"d":2,"s":85,"st":"10:25 AM","et":"11:00 AM","du":35,"tp":"math","t":"Ratio: unit rate as cost per ounce","g":"J","gn":"John","gr":["G6"],"gl":"G6"},{"i":"blk_n_007","w":3,"d":0,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Unit rate applied to recipe","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_n_024","w":5,"d":1,"s":80,"st":"10:20 AM","et":"10:55 AM","du":35,"tp":"math","t":"Cost model build: full assembly","g":"K","gn":"Kevin","gr":["G7","G8"],"gl":"G7/G8"},{"i":"blk_101","w":3,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Fraction mult: full recipe application","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_110","w":3,"d":2,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"ela","t":"Guide review of draft briefs (live feedback)","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_174","w":2,"d":3,"s":140,"st":"11:20 AM","et":"11:55 AM","du":35,"tp":"ela","t":"Seminar: Reading 2 on calories as limited metric","g":"J","gn":"John","gr":["G5","G6"],"gl":"G5/G6"},{"i":"blk_n_1777490092690","w":6,"d":4,"s":50,"st":"9:50 AM","et":"10:20 AM","du":30,"tp":"challenge","t":"End-of-Exploration Fluency Gate","g":"J","gn":"John","gr":["G5"],"gl":"G5"},{"i":"blk_n_020","w":4,"d":1,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Retail vs wholesale: slope comparison","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"},{"i":"blk_n_021","w":4,"d":4,"s":50,"st":"9:50 AM","et":"10:25 AM","du":35,"tp":"math","t":"Labor calc: proportional reasoning","g":"K","gn":"Kevin","gr":["G7"],"gl":"G7"}];
+const DECK = DECK_RAW.map(c => ({ id:c.i, w:c.w, d:c.d, s:c.s, startClock:c.st, endClock:c.et, dur:c.du, tp:c.tp, ttl:c.t, guide:c.g, guideName:c.gn, grades:c.gr, gradesLabel:c.gl }));
+const DECK_BY_ID = Object.fromEntries(DECK.map(c => [c.id, c]));
+
+// dates
+const WEEK1_MON_UTC = Date.UTC(2026, 8, 7);
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY_SHORT = ['MON','TUE','WED','THU','FRI'];
+const DAY_TITLE = ['Mon','Tue','Wed','Thu','Fri'];
+function dateFor(w, d) { return new Date(WEEK1_MON_UTC + ((w-1)*7 + d) * 86400000); }
+function dateLabel(w, d) { const dt = dateFor(w,d); return `${DAY_SHORT[d]} ${MONTH_SHORT[dt.getUTCMonth()].toUpperCase()} ${dt.getUTCDate()}`; }
+function dateLabelLong(w, d) { const dt = dateFor(w,d); return `${DAY_TITLE[d]}, ${MONTH_SHORT[dt.getUTCMonth()]} ${dt.getUTCDate()}, ${dt.getUTCFullYear()}`; }
+
+// ============================================================
+// IDENTITY — URL param ?as=kevin|john
+// ============================================================
+const params = new URLSearchParams(window.location.search);
+const asParam = (params.get('as') || '').toLowerCase();
+const ME = (asParam === 'kevin' || asParam === 'john') ? asParam : null;
+
+if (!ME) {
+  document.getElementById('landing').style.display = 'block';
+  document.getElementById('game').style.display = 'none';
+} else {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+}
+
+// ============================================================
+// STATE
+// ============================================================
+const QTYPE_LABEL = { slot2class:'SLOT → CLASS', slot2teacher:'SLOT → TEACHER', class2when:'CLASS → WHEN' };
+
+function defaultState() {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    players: {
+      kevin: { name: 'Kevin', score: 0, attempts: 0, correct: 0, streak: 0, bestStreak: 0 },
+      john:  { name: 'John',  score: 0, attempts: 0, correct: 0, streak: 0, bestStreak: 0 },
+    },
+    weights: {},
+    history: [],
+    turnSide: 'kevin',
+    settings: {
+      weeks: [1,2,3,4,5,6,7,8],
+      cohorts: ['G5','G6','G7','G8'],
+      types: ['math','biology','ela','challenge','chem','chem-lab','diagnostic','other'],
+      qtypes: ['slot2class','slot2teacher','class2when'],
+      modes: ['mc','free','reveal'],
+    },
+    round: null,
+    lastEventAt: 0,
+  };
+}
+let state = defaultState();
+let prevScores = { kevin: 0, john: 0 }; // for animation
+
+// ============================================================
+// SUPABASE CLIENT + SYNC
+// ============================================================
+const CLIENT_ID = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)) + '-' + (ME || 'spec');
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let _suppressRemote = false;
+let _writeTimer = null;
+let _connected = false;
+
+function setConn(mode, text) {
+  const pill = document.getElementById('connPill');
+  pill.classList.remove('live','dead','boot');
+  pill.classList.add(mode);
+  document.getElementById('connText').textContent = text;
+}
+
+function scheduleSync() {
+  if (!sb || _suppressRemote) return;
+  clearTimeout(_writeTimer);
+  _writeTimer = setTimeout(async () => {
+    try {
+      state.lastEventAt = Date.now();
+      const { error } = await sb.from('documents').upsert({
+        id: DOC_ID, data: state, client_id: CLIENT_ID, updated_at: new Date().toISOString(),
+      });
+      if (error) console.warn('[sync] upsert failed', error);
+    } catch (e) { console.warn('[sync] upsert threw', e); }
+  }, 180);
+}
+
+async function initSync() {
+  if (!ME) return; // only sync once identity is known
+  if (!sb) { setConn('dead', 'Local only'); return; }
+  setConn('boot', 'Connecting…');
+  try {
+    const { data: row, error } = await sb.from('documents')
+      .select('data, client_id').eq('id', DOC_ID).maybeSingle();
+    if (error) { console.warn('[sync] initial fetch failed', error); }
+    else if (row && row.data) {
+      _suppressRemote = true;
+      state = mergeIncoming(state, row.data);
+      _suppressRemote = false;
+    } else {
+      // Seed first row
+      await sb.from('documents').upsert({
+        id: DOC_ID, data: state, client_id: CLIENT_ID, updated_at: new Date().toISOString(),
+      });
+    }
+  } catch (e) { console.warn('[sync] init threw', e); }
+
+  sb.channel('doc-' + DOC_ID)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'documents', filter: `id=eq.${DOC_ID}` },
+      payload => {
+        const next = payload.new;
+        if (!next || next.client_id === CLIENT_ID) return;
+        _suppressRemote = true;
+        state = mergeIncoming(state, next.data);
+        _suppressRemote = false;
+        renderAll();
+      })
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') { _connected = true; setConn('live', 'Live'); }
+      else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        _connected = false; setConn('dead', 'Offline');
+      }
+    });
+
+  renderAll();
+}
+
+function mergeIncoming(prev, incoming) {
+  if (!incoming || typeof incoming !== 'object') return prev;
+  // Always trust the server's view. Schema upgrades happen here if needed.
+  const base = defaultState();
+  return Object.assign(base, incoming, {
+    players: Object.assign({}, base.players, incoming.players || {}),
+    settings: Object.assign({}, base.settings, incoming.settings || {}),
+  });
+}
+
+// ============================================================
+// CARD PICKING / QUESTION GENERATION
+// ============================================================
+function applyFilters() {
+  const s = state.settings;
+  return DECK.filter(c => s.weeks.includes(c.w) && s.types.includes(c.tp) && c.grades.some(g => s.cohorts.includes(g)));
+}
+function pickCard() {
+  const pool = applyFilters();
+  if (!pool.length) return null;
+  const items = pool.map(c => ({ c, w: state.weights[c.id] ?? 1 }));
+  const total = items.reduce((a,x) => a + x.w, 0);
+  let r = Math.random() * total;
+  for (const it of items) { if ((r -= it.w) <= 0) return it.c; }
+  return items[items.length-1].c;
+}
+function pickQType() { const s = state.settings.qtypes; return s[Math.floor(Math.random()*s.length)]; }
+function pickMode(qtype) { if (qtype === 'class2when') return 'reveal'; const a = state.settings.modes.slice(); return a[Math.floor(Math.random()*a.length)]; }
+
+function distractorsFor(card, k=3) {
+  const pool = DECK.filter(c => c.id !== card.id && (c.w === card.w || c.tp === card.tp) && c.ttl !== card.ttl);
+  const titles = Array.from(new Set(pool.map(c => c.ttl)));
+  for (let i = titles.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [titles[i], titles[j]] = [titles[j], titles[i]]; }
+  return titles.slice(0, k);
+}
+
+function buildRound() {
+  const card = pickCard();
+  if (!card) return null;
+  const qtype = pickQType();
+  const mode = pickMode(qtype);
+  let options = null, correct = null, expected = null;
+
+  if (qtype === 'slot2class') {
+    correct = card.ttl;
+    expected = card.ttl;
+    if (mode === 'mc') {
+      const opts = [card.ttl, ...distractorsFor(card, 3)];
+      for (let i = opts.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+      options = opts.map(t => ({ value: t, label: t }));
+    }
+  } else if (qtype === 'slot2teacher') {
+    correct = card.guide;
+    expected = card.guideName;
+    if (mode === 'mc') {
+      const opts = ['J','K','A'];
+      for (let i = opts.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+      const labelMap = { J:'JOHN', K:'KEVIN', A:'A (EXTERNAL)' };
+      options = opts.map(v => ({ value: v, label: labelMap[v] }));
+    }
+  } else if (qtype === 'class2when') {
+    correct = `Wk ${card.w} · ${dateLabel(card.w, card.d)} · ${card.startClock} · ${card.guideName}`;
+    expected = correct;
+  }
+
+  return {
+    cardId: card.id, qtype, mode, options, correct, expected,
+    phase: 'asking', chosen: null, chosenBy: null, ok: null, pts: 0,
+    streakBonusEarned: false, fbExtraHtml: null,
+    revealedAt: null, answeredAt: null, createdAt: Date.now(),
+  };
+}
+
+// ============================================================
+// FUZZY MATCHING (free text)
+// ============================================================
+const STOP = new Set(['the','a','an','of','and','in','on','to','for','at','with','by','from','&']);
+function normalize(s) { return s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim().split(' ').filter(w=>w&&!STOP.has(w)).join(' '); }
+function levenshtein(a,b){ if(a===b) return 0; const al=a.length, bl=b.length; if(!al) return bl; if(!bl) return al; const dp=new Array(bl+1); for(let j=0;j<=bl;j++) dp[j]=j;
+  for(let i=1;i<=al;i++){ let prev=dp[0]; dp[0]=i; for(let j=1;j<=bl;j++){ const tmp=dp[j]; dp[j]=(a[i-1]===b[j-1])?prev:1+Math.min(prev,dp[j],dp[j-1]); prev=tmp; } } return dp[bl]; }
+function fuzzyTitleMatch(input, target) {
+  const ni = normalize(input), nt = normalize(target);
+  if (!ni) return { ok: false, kind: 'empty' };
+  if (ni === nt) return { ok: true, kind: 'exact' };
+  if (ni.length >= 6 && (nt.includes(ni) || ni.includes(nt))) return { ok: true, kind: 'substring' };
+  const dist = levenshtein(ni, nt); const tol = Math.max(2, Math.floor(nt.length * 0.25));
+  if (dist <= tol) return { ok: true, kind: 'fuzzy', dist, tol };
+  return { ok: false, kind: 'miss', dist, tol };
+}
+function teacherMatch(input, guide) {
+  const ni = input.trim().toLowerCase();
+  const map = { J: ['j','john'], K: ['k','kevin'], A: ['a','external','partner','visitor','panel'] };
+  return (map[guide]||[]).includes(ni) ? { ok: true } : { ok: false };
+}
+
+// ============================================================
+// SCORING
+// ============================================================
+function pointsFor(mode, ok) { if (!ok) return 0; if (mode === 'free') return 2; return 1; }
+
+function applyAnswer(ok, chosenLabel, fbExtraHtml) {
+  // ME applied an answer to current round.
+  if (!state.round || state.round.phase !== 'asking' && state.round.phase !== 'revealed') return;
+  if (state.turnSide !== ME) return; // shouldn't happen, but guard
+  const player = state.players[ME];
+  prevScores = { kevin: state.players.kevin.score, john: state.players.john.score };
+  const pts = pointsFor(state.round.mode, ok);
+  player.attempts++;
+  let streakBonus = false;
+  if (ok) {
+    player.correct++; player.streak++;
+    if (player.streak > player.bestStreak) player.bestStreak = player.streak;
+    player.score += pts;
+    if (player.streak > 0 && player.streak % 3 === 0) { player.score += 1; streakBonus = true; }
+  } else {
+    player.streak = 0;
+  }
+  const id = state.round.cardId;
+  const w0 = state.weights[id] ?? 1;
+  state.weights[id] = ok ? Math.max(w0 * 0.65, 0.25) : Math.min(w0 * 1.6 + 0.5, 6.0);
+
+  const card = DECK_BY_ID[id];
+  const summary = `${QTYPE_LABEL[state.round.qtype].toLowerCase()} · ${card.ttl} · ${card.gradesLabel}`;
+  state.history.push({ name: state.players[ME].name, side: ME, ok, delta: pts + (streakBonus ? 1 : 0), summary, t: Date.now() });
+  if (state.history.length > 50) state.history = state.history.slice(-50);
+
+  state.round.phase = 'answered';
+  state.round.chosen = chosenLabel;
+  state.round.chosenBy = ME;
+  state.round.ok = ok;
+  state.round.pts = pts;
+  state.round.streakBonusEarned = streakBonus;
+  state.round.fbExtraHtml = fbExtraHtml || null;
+  state.round.answeredAt = Date.now();
+
+  scheduleSync();
+  renderAll();
+}
+
+function nextRound() {
+  // Pick new card, flip turn, write.
+  state.turnSide = state.turnSide === 'kevin' ? 'john' : 'kevin';
+  state.round = buildRound();
+  if (!state.round) {
+    state.round = null;
+  }
+  scheduleSync();
+  renderAll();
+}
+
+function startFirstRound() {
+  // Initial round, no flip — first turn goes to whoever the state currently says.
+  state.round = buildRound();
+  scheduleSync();
+  renderAll();
+}
+
+function revealAnswer() {
+  if (state.turnSide !== ME) return;
+  if (!state.round || state.round.phase !== 'asking' || state.round.mode !== 'reveal') return;
+  state.round.phase = 'revealed';
+  state.round.revealedAt = Date.now();
+  scheduleSync();
+  renderAll();
+}
+
+function overrideToCorrect() {
+  // Active player decides their fuzzy-rejected free-text answer was actually right
+  if (state.turnSide !== ME || !state.round || state.round.phase !== 'answered' || state.round.ok) return;
+  const player = state.players[ME];
+  // undo wrong, redo as correct
+  player.attempts--;
+  state.history.pop();
+  applyAnswer(true, state.round.chosen, state.round.fbExtraHtml);
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+const $ = sel => document.querySelector(sel);
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function tierFor(p) {
+  if (p.attempts < 6) return 'INITIATE';
+  const acc = p.correct / p.attempts;
+  if (acc >= 0.92 && p.bestStreak >= 8) return 'ARCHON';
+  if (acc >= 0.85) return 'MASTER';
+  if (acc >= 0.72) return 'ADEPT';
+  if (acc >= 0.55) return 'APPRENTICE';
+  return 'INITIATE';
+}
+
+function animateNumber(el, from, to, ms=380) {
+  const start = performance.now();
+  function frame(t) {
+    const k = Math.min(1, (t - start) / ms);
+    const ease = 1 - Math.pow(1 - k, 3);
+    el.textContent = Math.round(from + (to - from) * ease);
+    if (k < 1) requestAnimationFrame(frame); else el.textContent = to;
+  }
+  requestAnimationFrame(frame);
+}
+
+function renderScoreboard() {
+  const k = state.players.kevin, j = state.players.john;
+  $('#nameKevin').textContent = (k.name || 'Kevin').toUpperCase();
+  $('#nameJohn').textContent  = (j.name || 'John').toUpperCase();
+  $('#youTagKevin').textContent = ME === 'kevin' ? 'YOU' : '';
+  $('#youTagJohn').textContent  = ME === 'john'  ? 'YOU' : '';
+  document.getElementById('card-kevin').classList.toggle('you', ME === 'kevin');
+  document.getElementById('card-john').classList.toggle('you', ME === 'john');
+
+  const sk = $('#scoreKevin'), sj = $('#scoreJohn');
+  if (prevScores.kevin !== k.score) { animateNumber(sk, prevScores.kevin, k.score); sk.classList.remove('bump'); void sk.offsetWidth; sk.classList.add('bump'); }
+  else { sk.textContent = k.score; }
+  if (prevScores.john !== j.score) { animateNumber(sj, prevScores.john, j.score); sj.classList.remove('bump'); void sj.offsetWidth; sj.classList.add('bump'); }
+  else { sj.textContent = j.score; }
+  prevScores = { kevin: k.score, john: j.score };
+
+  const pct = p => p.attempts ? Math.round(100*p.correct/p.attempts) : 0;
+  $('#accKevin').textContent = pct(k)+'%'; $('#accJohn').textContent = pct(j)+'%';
+  $('#accFillKevin').style.width = pct(k)+'%';
+  $('#accFillJohn').style.width  = pct(j)+'%';
+  $('#strKevin').textContent = k.streak; $('#strJohn').textContent = j.streak;
+  $('#bestKevin').textContent = k.bestStreak; $('#bestJohn').textContent = j.bestStreak;
+  $('#tierKevin').textContent = tierFor(k); $('#tierJohn').textContent = tierFor(j);
+
+  document.getElementById('card-kevin').classList.toggle('active', state.turnSide === 'kevin');
+  document.getElementById('card-john').classList.toggle('active', state.turnSide === 'john');
+}
+
+function renderHistory() {
+  const el = $('#history');
+  if (!state.history.length) { el.innerHTML = '<div class="history-empty">No rounds yet — first turn sets the tone.</div>'; return; }
+  el.innerHTML = state.history.slice(-6).reverse().map(h => `
+    <div class="row-h">
+      <span class="who ${h.side}">${escapeHtml((h.name||h.side).toUpperCase())}</span>
+      <span class="summ">${escapeHtml(h.summary)}</span>
+      <span class="verdict ${h.ok ? 'ok' : 'no'}">${h.ok ? '✓' : '✗'} ${h.delta>0?'+':''}${h.delta}</span>
+    </div>`).join('');
+}
+
+function renderRound() {
+  const meta = $('#promptMeta'), q = $('#promptQ'), ans = $('#answerArea'), fb = $('#feedback'), actions = $('#actions');
+  const spec = $('#spectator');
+  fb.style.display = 'none'; fb.innerHTML = ''; fb.classList.remove('good','bad');
+  actions.style.display = 'none'; actions.innerHTML = '';
+  ans.innerHTML = '';
+  spec.style.display = 'none';
+
+  const isMyTurn = (state.turnSide === ME);
+  const turnPlayerName = state.players[state.turnSide].name;
+  const turnSide = state.turnSide;
+
+  if (!state.round) {
+    // No active round — show "start" UI (or "waiting for X to start")
+    meta.innerHTML = `<span class="tag ${turnSide==='kevin'?'turn-k':'turn-j'}">▸ ${escapeHtml(turnPlayerName.toUpperCase())} TO START</span>`;
+    if (isMyTurn) {
+      q.innerHTML = `<div class="q-prompt">Ready when you are.</div><div class="q-helper">First card is yours. Click below to draw.</div>`;
+      actions.style.display = 'flex';
+      actions.innerHTML = `<button class="primary" id="startBtn">Draw first card →</button>`;
+      $('#startBtn').addEventListener('click', startFirstRound);
+    } else {
+      q.innerHTML = `<div class="q-prompt">Waiting on ${escapeHtml(turnPlayerName)}…</div><div class="q-helper">They draw the first card.</div>`;
+      spec.style.display = 'flex';
+      $('#spectatorText').textContent = `Watching ${turnPlayerName}…`;
+    }
+    return;
+  }
+
+  const card = DECK_BY_ID[state.round.cardId];
+  if (!card) {
+    q.innerHTML = `<div class="q-prompt">Card not found in deck.</div>`;
+    return;
+  }
+  const r = state.round;
+  const turnTag = `<span class="tag ${turnSide==='kevin'?'turn-k':'turn-j'}">▸ ${escapeHtml(turnPlayerName.toUpperCase())}${isMyTurn?' (YOU)':''}</span>`;
+  const qtypeChip = `<span class="tag qtype">${QTYPE_LABEL[r.qtype]}</span>`;
+  const modeChip = `<span class="tag mode">${r.mode==='mc'?'MULTIPLE CHOICE':r.mode==='free'?'FREE TEXT':'SELF-GRADE'}</span>`;
+  const dateStr = dateLabel(card.w, card.d);
+
+  meta.innerHTML = `${turnTag}${qtypeChip}${modeChip}${!isMyTurn ? '<span class="tag watching">SPECTATING</span>' : ''}`;
+
+  if (!isMyTurn && r.phase === 'asking') {
+    spec.style.display = 'flex';
+    $('#spectatorText').textContent = `Watching ${turnPlayerName} answer…`;
+  }
+
+  if (r.qtype === 'slot2class') {
+    q.innerHTML = `
+      <div class="slot-line"><span class="pri">WK ${card.w}</span><span class="sep">·</span><span class="pri">${dateStr}</span><span class="sep">·</span><span class="pri">${card.startClock}</span><span class="sep">·</span><span class="pri">${card.gradesLabel}</span><span class="sep">·</span>${card.dur}m<span class="sep">·</span>${escapeHtml(card.tp).toUpperCase()}</div>
+      <div class="q-prompt">What class is this?</div>`;
+    if (r.mode === 'mc') renderMC(r);
+    else if (r.mode === 'free') renderFree(r);
+    else renderReveal(r, card);
+  } else if (r.qtype === 'slot2teacher') {
+    q.innerHTML = `
+      <div class="slot-line"><span class="pri">WK ${card.w}</span><span class="sep">·</span><span class="pri">${dateStr}</span><span class="sep">·</span><span class="pri">${card.startClock}</span><span class="sep">·</span><span class="pri">${card.gradesLabel}</span></div>
+      <div class="q-meta"><em>${escapeHtml(card.tp)}</em>: ${escapeHtml(card.ttl)}</div>
+      <div class="q-prompt">Who teaches this?</div>`;
+    if (r.mode === 'mc') renderMC(r);
+    else if (r.mode === 'free') renderFree(r);
+    else renderReveal(r, card);
+  } else if (r.qtype === 'class2when') {
+    q.innerHTML = `
+      <div class="q-class-title">${escapeHtml(card.ttl)}</div>
+      <div class="q-meta">${escapeHtml(card.gradesLabel)}<span class="sep" style="color:var(--ink-4); margin:0 6px">·</span>${card.dur}m</div>
+      <div class="q-helper">Recall <em>aloud</em>: which week, which date (month + day), what start time, who teaches.</div>`;
+    renderReveal(r, card);
+  }
+
+  if (r.phase === 'answered') {
+    renderFeedback(r, card);
+  }
+}
+
+function renderMC(r) {
+  const ans = $('#answerArea');
+  const opts = r.options || [];
+  const isMyTurn = (state.turnSide === ME);
+  const phase = r.phase;
+  ans.innerHTML = `<div class="choices">${opts.map((o,i)=>{
+    const chosen = phase === 'answered' && r.chosen === o.value;
+    const isCorrect = phase === 'answered' && o.value === r.correct;
+    const cls = isCorrect ? 'correct' : (chosen && !r.ok ? 'wrong' : '');
+    return `<button class="choice ${cls}" data-val="${escapeHtml(o.value)}" data-key="${i+1}" ${(!isMyTurn || phase!=='asking')?'disabled':''}><span class="num">${i+1}</span>${escapeHtml(o.label)}</button>`;
+  }).join('')}</div>`;
+  if (isMyTurn && phase === 'asking') {
+    ans.querySelectorAll('.choice').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.val;
+        const ok = (val === r.correct);
+        // For slot2teacher, show the friendly name in feedback
+        let chosenLabel = val;
+        if (r.qtype === 'slot2teacher') {
+          const lm = { J:'John', K:'Kevin', A:'A (external)' };
+          chosenLabel = lm[val] || val;
+        }
+        applyAnswer(ok, chosenLabel, null);
+      });
+    });
+  }
+}
+
+function renderFree(r) {
+  const ans = $('#answerArea');
+  const isMyTurn = (state.turnSide === ME);
+  const phase = r.phase;
+  if (phase === 'asking') {
+    ans.innerHTML = `<div class="input-row"><input type="text" id="freeIn" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${isMyTurn?'Type your answer…':'Waiting for opponent to type…'}" ${isMyTurn?'':'disabled'} /><button class="primary" id="freeSubmit" ${isMyTurn?'':'disabled'}>Submit</button></div>`;
+    if (isMyTurn) {
+      const inp = $('#freeIn'); inp.focus();
+      const submit = () => {
+        const value = inp.value;
+        let ok, fbExtra = null;
+        if (r.qtype === 'slot2class') {
+          const m = fuzzyTitleMatch(value, r.correct);
+          ok = m.ok;
+          if (m.kind === 'fuzzy') fbExtra = `<span class="meta">(edit dist ${m.dist}/${m.tol})</span>`;
+        } else if (r.qtype === 'slot2teacher') {
+          const m = teacherMatch(value, r.correct);
+          ok = m.ok;
+        }
+        applyAnswer(ok, value, fbExtra);
+      };
+      $('#freeSubmit').addEventListener('click', submit);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    }
+  } else {
+    // answered — show what was typed
+    ans.innerHTML = `<div class="input-row"><input type="text" value="${escapeHtml(r.chosen||'')}" disabled /><button disabled>Submitted</button></div>`;
+  }
+}
+
+function renderReveal(r, card) {
+  const ans = $('#answerArea');
+  const isMyTurn = (state.turnSide === ME);
+  let answerHtml;
+  if (r.qtype === 'slot2class') answerHtml = `<strong>${escapeHtml(card.ttl)}</strong>`;
+  else if (r.qtype === 'slot2teacher') answerHtml = `<strong>${escapeHtml(card.guideName)}</strong>`;
+  else answerHtml = `
+    <div class="subgrade">
+      <div class="lbl">Week</div><div class="val">${card.w}</div>
+      <div class="lbl">Date</div><div class="val">${dateLabelLong(card.w, card.d)}</div>
+      <div class="lbl">Start</div><div class="val">${card.startClock}–${card.endClock}</div>
+      <div class="lbl">Teacher</div><div class="val">${escapeHtml(card.guideName)}</div>
+    </div>`;
+
+  if (r.phase === 'asking') {
+    ans.innerHTML = `<button class="primary" id="revealBtn" ${isMyTurn?'':'disabled'}>Reveal answer</button>`;
+    if (isMyTurn) $('#revealBtn').addEventListener('click', revealAnswer);
+  } else if (r.phase === 'revealed') {
+    ans.innerHTML = `
+      <div class="reveal-body">${answerHtml}</div>
+      <div class="self-grade">
+        <span class="lbl">${isMyTurn ? "How'd you do?" : `Waiting on ${escapeHtml(state.players[state.turnSide].name)}…`}</span>
+        ${isMyTurn ? `<button class="good small" data-v="1">✓ Right</button><button class="bad small" data-v="0">✗ Wrong</button>` : ''}
+      </div>`;
+    if (isMyTurn) {
+      ans.querySelector('.self-grade').addEventListener('click', e => {
+        if (e.target.dataset.v === undefined) return;
+        const ok = e.target.dataset.v === '1';
+        applyAnswer(ok, ok ? 'self-graded right' : 'self-graded wrong', null);
+      });
+    }
+  } else if (r.phase === 'answered') {
+    ans.innerHTML = `<div class="reveal-body">${answerHtml}</div>`;
+  }
+}
+
+function renderFeedback(r, card) {
+  const fb = $('#feedback'), actions = $('#actions');
+  const scorerName = (r.chosenBy && state.players[r.chosenBy]) ? state.players[r.chosenBy].name : '';
+  fb.style.display = 'block';
+  fb.classList.remove('good','bad');
+  fb.classList.add(r.ok ? 'good' : 'bad');
+  let answerLine;
+  if (r.qtype === 'slot2class') answerLine = `Title: <span class="answer">${escapeHtml(card.ttl)}</span>${r.fbExtraHtml || ''}`;
+  else if (r.qtype === 'slot2teacher') answerLine = `Teacher: <span class="answer">${escapeHtml(card.guideName)}</span>`;
+  else answerLine = '';
+
+  let body = `<span class="scorer-name">${escapeHtml(scorerName.toUpperCase())}</span>`;
+  body += r.ok
+    ? `<span class="verdict ok">✓ Correct</span>${r.pts ? `<span class="pts">+${r.pts}${r.streakBonusEarned?' · streak ×3 +1 bonus':''}</span>` : ''}`
+    : `<span class="verdict no">✗ Wrong</span>`;
+  if (answerLine) body += `<div style="margin-top:8px">${answerLine}</div>`;
+
+  // Override button: only visible to active player when their free-text answer was rejected
+  const showOverride = (state.turnSide === ME && r.mode === 'free' && !r.ok && r.qtype !== 'class2when');
+  if (showOverride) body += `<div style="margin-top:8px"><button class="small ghost" id="overrideBtn">Override · I was actually right</button></div>`;
+  fb.innerHTML = body;
+  if (showOverride) $('#overrideBtn').addEventListener('click', overrideToCorrect);
+
+  // Next round — anyone can advance
+  actions.style.display = 'flex';
+  actions.innerHTML = `<button class="primary" id="nextBtn">Next round →</button>`;
+  $('#nextBtn').addEventListener('click', nextRound);
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+function buildFilters() {
+  const s = state.settings;
+  const mk = (containerId, items, key, labelMap) => {
+    const c = document.getElementById(containerId);
+    c.innerHTML = items.map(v => `<label><input type="checkbox" data-key="${key}" data-v="${v}" ${s[key].includes(v)?'checked':''}>${labelMap ? (labelMap[v]||v) : v}</label>`).join('');
+    c.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const v = inp.dataset.v; const k = inp.dataset.key;
+        const val = (k === 'weeks') ? parseInt(v,10) : v;
+        if (inp.checked) { if (!state.settings[k].includes(val)) state.settings[k].push(val); }
+        else { state.settings[k] = state.settings[k].filter(x => x !== val); }
+        scheduleSync();
+        $('#deckInfo').textContent = deckInfoText();
+      });
+    });
+  };
+  mk('weekFilter', [1,2,3,4,5,6,7,8], 'weeks');
+  mk('cohortFilter', ['G5','G6','G7','G8'], 'cohorts');
+  mk('typeFilter', ['math','biology','ela','challenge','chem','chem-lab','diagnostic','other'], 'types');
+  mk('qtypeFilter', ['slot2class','slot2teacher','class2when'], 'qtypes', QTYPE_LABEL);
+  mk('modeFilter', ['mc','free','reveal'], 'modes', { mc:'Multiple choice', free:'Free text', reveal:'Self-grade reveal' });
+  $('#p1name').value = state.players.kevin.name;
+  $('#p2name').value = state.players.john.name;
+  $('#p1name').addEventListener('input', e => { state.players.kevin.name = e.target.value || 'Kevin'; scheduleSync(); renderScoreboard(); renderRound(); });
+  $('#p2name').addEventListener('input', e => { state.players.john.name = e.target.value || 'John'; scheduleSync(); renderScoreboard(); renderRound(); });
+  $('#resetScores').addEventListener('click', () => {
+    if (!confirm('Reset both scores and stats?')) return;
+    for (const k of ['kevin','john']) { const p = state.players[k]; p.score=0; p.attempts=0; p.correct=0; p.streak=0; p.bestStreak=0; }
+    state.history = []; state.round = null; state.turnSide = 'kevin';
+    prevScores = { kevin: 0, john: 0 };
+    scheduleSync(); renderAll();
+  });
+  $('#resetWeights').addEventListener('click', () => { if (!confirm('Reset card difficulty memory?')) return; state.weights = {}; scheduleSync(); });
+  $('#resetAll').addEventListener('click', () => { if (!confirm('Wipe ALL state — names, scores, weights, history?')) return; state = defaultState(); scheduleSync(); renderAll(); });
+}
+
+function deckInfoText() { const pool = applyFilters(); return `${pool.length} / ${DECK.length} cards`; }
+function renderAll() { renderScoreboard(); renderHistory(); $('#deckInfo').textContent = deckInfoText(); renderRound(); }
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (!ME) return;
+  const r = state.round;
+  // Next round when feedback is showing
+  if (r && r.phase === 'answered' && (e.key === 'n' || e.key === 'N' || e.key === 'Enter')) {
+    e.preventDefault(); document.getElementById('nextBtn')?.click(); return;
+  }
+  // MC choice keys
+  if (r && r.mode === 'mc' && r.phase === 'asking' && /^[1-4]$/.test(e.key) && state.turnSide === ME) {
+    const btn = document.querySelector(`.choice[data-key="${e.key}"]`);
+    if (btn && !btn.disabled) btn.click();
+  }
+  // Self-grade Y/W
+  if (r && r.mode === 'reveal' && r.phase === 'revealed' && state.turnSide === ME) {
+    if (e.key === 'y' || e.key === 'Y') document.querySelector('.self-grade [data-v="1"]')?.click();
+    if (e.key === 'w' || e.key === 'W') document.querySelector('.self-grade [data-v="0"]')?.click();
+  }
+  // Reveal
+  if (r && r.mode === 'reveal' && r.phase === 'asking' && state.turnSide === ME) {
+    if (e.key === ' ' || e.key === 'r' || e.key === 'R') { e.preventDefault(); document.getElementById('revealBtn')?.click(); }
+  }
+});
+
+// ============================================================
+// BOOT
+// ============================================================
+if (ME) {
+  buildFilters();
+  renderAll();
+  initSync();
+}
+</script>
+</body>
+</html>
